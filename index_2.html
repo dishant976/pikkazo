@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chop Shop Studio — Pikkazo Remix Machine</title>
+<meta name="description" content="Cut your Pikkazos apart, animate the fragments, paint your own grids. Reads straight from Ethereum. No backend.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bone:#EDE7D8;
+  --linen:#DFD7C3;
+  --ink:#211E1A;
+  --ochre:#C9972F;
+  --oxide:#A8402A;
+  --prussian:#2C4A5E;
+  --olive:#7A8B6F;
+  --paper-edge:#F7F3E8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Archivo',sans-serif;
+  background:var(--bone);
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(201,151,47,.06), transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(44,74,94,.06), transparent 40%);
+  color:var(--ink);
+  min-height:100%;
+}
+::selection{background:var(--ochre);color:var(--ink)}
+
+/* ---------- header ---------- */
+header{position:relative;padding:40px 32px 26px;border-bottom:3px solid var(--ink);overflow:hidden}
+.frag-title{display:flex;flex-wrap:wrap;gap:5px;align-items:flex-end;user-select:none}
+.frag-title span{
+  font-family:'Archivo Black',sans-serif;
+  font-size:clamp(22px,4.4vw,48px);
+  line-height:1;padding:.14em .18em .1em;display:inline-block;
+  color:var(--bone);background:var(--ink);
+  box-shadow:3px 3px 0 rgba(33,30,26,.25);
+}
+.frag-title span:nth-child(2){background:var(--oxide);transform:rotate(-2.5deg) translateY(-4px)}
+.frag-title span:nth-child(3){background:var(--prussian);transform:rotate(1.8deg)}
+.frag-title span:nth-child(5){background:var(--ochre);color:var(--ink);transform:rotate(2.2deg) translateY(-3px)}
+.frag-title span:nth-child(7){background:var(--prussian);transform:rotate(-2deg) translateY(-5px)}
+.frag-title span:nth-child(10){background:var(--olive);transform:rotate(2deg) translateY(-4px)}
+.frag-title span:nth-child(12){background:var(--oxide);transform:rotate(-1.8deg)}
+.frag-title span:nth-child(14){background:var(--ochre);color:var(--ink);transform:rotate(1.5deg) translateY(-3px)}
+.frag-title .gap{background:none;box-shadow:none;padding:0 .1em}
+.tagline{margin-top:12px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;opacity:.75}
+.tagline b{color:var(--oxide)}
+header .shard{position:absolute;pointer-events:none}
+header .shard.s1{top:-30px;right:8%;width:120px;height:160px;background:var(--ochre);clip-path:polygon(0 0,100% 12%,74% 100%)}
+header .shard.s2{top:20px;right:2%;width:90px;height:120px;background:var(--prussian);clip-path:polygon(20% 0,100% 30%,55% 100%,0 70%)}
+header .shard.s3{bottom:-20px;right:14%;width:70px;height:90px;background:var(--oxide);clip-path:polygon(0 20%,100% 0,80% 100%)}
+
+/* ---------- layout ---------- */
+main{display:grid;grid-template-columns:330px 1fr;max-width:1320px;margin:0 auto}
+@media(max-width:940px){
+  main{grid-template-columns:1fr}
+  header{padding:28px 20px 22px}
+  header .shard{display:none}
+}
+
+/* ---------- materials panel ---------- */
+.materials{border-right:3px solid var(--ink);padding:24px 22px 40px}
+@media(max-width:940px){.materials{border-right:none;border-bottom:3px solid var(--ink)}}
+.panel-label{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+  letter-spacing:.22em;text-transform:uppercase;
+  display:flex;align-items:center;gap:10px;margin:0 0 14px;
+}
+.panel-label::after{content:"";flex:1;height:1px;background:var(--ink);opacity:.35}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;letter-spacing:.04em;margin-bottom:6px}
+.field small{display:block;font-size:11px;opacity:.6;margin-top:5px;line-height:1.45}
+input[type=text]{
+  width:100%;font-family:'IBM Plex Mono',monospace;font-size:13px;
+  padding:10px 12px;background:var(--paper-edge);
+  border:2px solid var(--ink);color:var(--ink);outline:none;
+}
+input[type=text]:focus-visible{box-shadow:3px 3px 0 var(--ochre)}
+.btn{
+  font-family:'Archivo',sans-serif;font-weight:600;font-size:13px;letter-spacing:.04em;
+  padding:10px 15px;border:2px solid var(--ink);background:var(--ink);color:var(--bone);
+  cursor:pointer;transition:transform .08s ease, box-shadow .08s ease;
+}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ochre)}
+.btn:active{transform:none;box-shadow:none}
+.btn:focus-visible{outline:3px solid var(--oxide);outline-offset:2px}
+.btn.secondary{background:var(--paper-edge);color:var(--ink)}
+.btn.accent{background:var(--oxide);border-color:var(--oxide)}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.status{
+  font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.5;
+  min-height:18px;margin:11px 0 4px;color:var(--prussian);white-space:pre-wrap;
+}
+.status.err{color:var(--oxide)}
+.pieces{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:10px;margin-top:12px}
+.piece{
+  position:relative;border:2px solid var(--ink);background:var(--paper-edge);
+  aspect-ratio:1;cursor:pointer;box-shadow:3px 3px 0 rgba(33,30,26,.2);padding:0;
+}
+.piece img,.piece canvas{width:100%;height:100%;object-fit:cover;display:block}
+.piece .tid{
+  position:absolute;left:0;bottom:0;right:0;
+  font-family:'IBM Plex Mono',monospace;font-size:9.5px;
+  background:var(--ink);color:var(--bone);padding:2px 4px;text-align:center;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.piece:hover::after{
+  content:"✕ remove";position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(168,64,42,.85);color:var(--bone);
+  font-size:10px;font-weight:600;letter-spacing:.06em;
+}
+.pieces-empty{
+  font-size:12px;opacity:.55;line-height:1.6;
+  border:2px dashed rgba(33,30,26,.35);padding:15px;margin-top:12px;
+}
+
+/* ---------- easel ---------- */
+.easel{padding:22px 26px 48px;display:flex;flex-direction:column;align-items:center}
+.rack{width:100%;max-width:660px;margin-bottom:14px}
+.rack .panel-label{margin-bottom:9px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.chip{
+  font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.05em;
+  padding:8px 12px;background:var(--paper-edge);border:2px solid var(--ink);cursor:pointer;
+}
+.chip[aria-pressed=true]{background:var(--prussian);color:var(--bone);box-shadow:3px 3px 0 var(--ochre)}
+.chip:focus-visible{outline:3px solid var(--oxide);outline-offset:2px}
+.chip.fchip[aria-pressed=true]{background:var(--oxide)}
+.chips .spacer{flex:1}
+.toggle{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;cursor:pointer;user-select:none}
+.toggle input{accent-color:var(--oxide);width:15px;height:15px}
+.mini{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+  display:flex;align-items:center;gap:6px;
+}
+.mini input[type=number]{
+  width:56px;font-family:inherit;font-size:12px;padding:6px 7px;
+  border:2px solid var(--ink);background:var(--paper-edge);color:var(--ink);
+}
+.mini input[type=range]{accent-color:var(--oxide);width:110px}
+
+/* grid studio sub-rack */
+#gridRack{display:none;background:var(--linen);border:2px solid var(--ink);padding:12px 14px;box-shadow:4px 4px 0 rgba(33,30,26,.15)}
+#gridRack.on{display:block}
+#gridRack .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+#gridRack .row:first-child{margin-top:0}
+.donor-chip{
+  width:34px;height:34px;border:2px solid var(--ink);cursor:pointer;padding:0;
+  overflow:hidden;position:relative;background:var(--paper-edge);
+}
+.donor-chip img,.donor-chip canvas{width:100%;height:100%;object-fit:cover;display:block}
+.donor-chip[aria-pressed=true]{outline:3px solid var(--oxide);outline-offset:1px;box-shadow:3px 3px 0 var(--ochre)}
+.tool-note{font-size:11px;opacity:.65;line-height:1.5;margin-top:8px}
+
+/* canvas */
+.canvas-frame{
+  position:relative;border:14px solid var(--ink);
+  outline:3px solid var(--ochre);outline-offset:4px;
+  background:var(--paper-edge);width:100%;max-width:660px;
+  box-shadow:10px 12px 0 rgba(33,30,26,.18);
+}
+#stage{display:block;width:100%;height:auto;touch-action:none}
+#stage.paint{cursor:crosshair}
+.canvas-hint{
+  position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;
+  align-items:center;justify-content:center;text-align:center;padding:24px;
+  font-size:14px;opacity:.6;line-height:1.6;pointer-events:none;
+}
+.canvas-hint.hidden{display:none}
+.rec-dot{
+  position:absolute;top:10px;right:12px;display:none;align-items:center;gap:6px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--oxide);
+  background:rgba(247,243,232,.9);padding:4px 8px;border:1.5px solid var(--oxide);
+}
+.rec-dot.on{display:flex}
+.rec-dot i{width:9px;height:9px;border-radius:50%;background:var(--oxide);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion: reduce){.rec-dot i{animation:none}}
+
+.placard{
+  margin-top:24px;width:100%;max-width:660px;
+  background:var(--paper-edge);border:2px solid var(--ink);
+  box-shadow:4px 4px 0 rgba(33,30,26,.2);padding:15px 20px;
+  display:grid;grid-template-columns:1fr auto;gap:4px 16px;
+}
+.placard .work-title{font-family:'Archivo Black',sans-serif;font-size:17px}
+.placard .medium{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;opacity:.85}
+.placard .cat{font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:right;line-height:1.7;opacity:.75;grid-row:1/3;grid-column:2}
+.actions{margin-top:20px;width:100%;max-width:660px;display:flex;gap:9px;flex-wrap:wrap}
+footer{
+  border-top:3px solid var(--ink);padding:18px 32px 26px;
+  font-size:11.5px;font-family:'IBM Plex Mono',monospace;
+  opacity:.65;line-height:1.7;max-width:1320px;margin:0 auto;
+}
+@media (prefers-reduced-motion: reduce){.btn,.btn:hover{transition:none;transform:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="shard s1"></div><div class="shard s2"></div><div class="shard s3"></div>
+  <h1 class="frag-title" aria-label="Chop Shop Studio">
+    <span>C</span><span>H</span><span>O</span><span>P</span><span class="gap"></span><span>S</span><span>H</span><span>O</span><span>P</span><span class="gap"></span><span>S</span><span>T</span><span>U</span><span>D</span><span>I</span><span>O</span>
+  </h1>
+  <p class="tagline">Pikkazo remix machine — <b>cut. paint. animate. exhibit.</b> Reads straight from Ethereum. No backend, no keys.</p>
+</header>
+
+<main>
+  <!-- ================= materials ================= -->
+  <section class="materials" aria-label="Materials">
+    <div class="panel-label">Materials</div>
+
+    <div class="field">
+      <label for="contract">Contract address</label>
+      <input type="text" id="contract" placeholder="0x… (OpenSea → item → Details)" spellcheck="false">
+      <small>Read via public RPC <code>tokenURI()</code> only — nothing signed, nothing sent.</small>
+    </div>
+
+    <div class="field">
+      <label for="tokens">Token IDs</label>
+      <input type="text" id="tokens" placeholder="e.g. 12, 348, 9001" spellcheck="false">
+      <small>2–6 pieces. Yours, your friends' — every remix credits its donors.</small>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="loadBtn">Load pieces</button>
+      <button class="btn secondary" id="demoBtn" title="Generate placeholder cubist faces to test the machine">Demo pieces</button>
+    </div>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <div class="pieces" id="pieces"></div>
+    <div class="pieces-empty" id="piecesEmpty">
+      No material on the table yet.<br>
+      Load token IDs from the chain, or press <b>Demo pieces</b> to try the blades on procedurally generated stand-ins.
+    </div>
+  </section>
+
+  <!-- ================= easel ================= -->
+  <section class="easel" aria-label="Easel">
+
+    <div class="rack">
+      <div class="panel-label">Cuts</div>
+      <div class="chips" role="group" aria-label="Cut style">
+        <button class="chip mchip" data-mode="shatter" aria-pressed="true">SHATTER</button>
+        <button class="chip mchip" data-mode="strips"  aria-pressed="false">STRIPS</button>
+        <button class="chip mchip" data-mode="split"   aria-pressed="false">FACE SPLIT</button>
+        <button class="chip mchip" data-mode="kaleido" aria-pressed="false">KALEIDO</button>
+        <button class="chip mchip" data-mode="diamond" aria-pressed="false">DIAMOND</button>
+        <button class="chip mchip" data-mode="weave"   aria-pressed="false">WEAVE</button>
+        <button class="chip mchip" data-mode="studio"  aria-pressed="false">GRID STUDIO</button>
+        <span class="spacer"></span>
+        <label class="toggle"><input type="checkbox" id="edges" checked> Cut edges</label>
+        <label class="toggle"><input type="checkbox" id="sig" checked> Signature</label>
+      </div>
+    </div>
+
+    <div class="rack" id="gridRackWrap">
+      <div id="gridRack" aria-label="Grid studio controls">
+        <div class="row">
+          <span class="mini">rows <input type="number" id="gRows" min="2" max="12" value="4"></span>
+          <span class="mini">cols <input type="number" id="gCols" min="2" max="12" value="4"></span>
+          <button class="btn secondary" id="gRandom" style="padding:7px 12px;font-size:12px">Fill random</button>
+          <button class="btn secondary" id="gClear" style="padding:7px 12px;font-size:12px">Clear inverts</button>
+        </div>
+        <div class="row" id="donorRow">
+          <span class="mini">brush:</span>
+          <!-- donor chips injected -->
+          <button class="chip" id="invTool" aria-pressed="false" title="Toggle invert on cells">INVERT CELL</button>
+        </div>
+        <div class="tool-note">Pick a donor brush, then click or drag across the canvas to paint cells. The INVERT CELL brush flips any cell to its negative.</div>
+      </div>
+    </div>
+
+    <div class="rack">
+      <div class="panel-label">Finish</div>
+      <div class="chips" role="group" aria-label="Filter">
+        <button class="chip fchip" data-filter="none"   aria-pressed="true">CLEAN</button>
+        <button class="chip fchip" data-filter="invert" aria-pressed="false">INVERT</button>
+        <button class="chip fchip" data-filter="noir"   aria-pressed="false">NOIR</button>
+        <button class="chip fchip" data-filter="heat"   aria-pressed="false">HEAT</button>
+        <button class="chip fchip" data-filter="pop"    aria-pressed="false">POP</button>
+        <button class="chip fchip" data-filter="chaos"  aria-pressed="false">CHAOS</button>
+      </div>
+    </div>
+
+    <div class="rack">
+      <div class="panel-label">Motion</div>
+      <div class="chips" role="group" aria-label="Animation">
+        <button class="chip achip" data-anim="off"     aria-pressed="true">STILL</button>
+        <button class="chip achip" data-anim="shuffle" aria-pressed="false">SHUFFLE</button>
+        <button class="chip achip" data-anim="drift"   aria-pressed="false">DRIFT</button>
+        <button class="chip achip" data-anim="pulse"   aria-pressed="false">PULSE</button>
+        <span class="mini">speed <input type="range" id="speed" min="25" max="300" value="100" aria-label="Animation speed"></span>
+        <span class="spacer"></span>
+        <span class="mini">rec
+          <input type="number" id="recSecs" min="2" max="15" value="6" aria-label="Recording seconds">s
+        </span>
+        <button class="btn secondary" id="recBtn" style="padding:7px 12px;font-size:12px" disabled>● Record WebM</button>
+      </div>
+    </div>
+
+    <div class="canvas-frame">
+      <canvas id="stage" width="1200" height="1200" aria-label="Remix canvas"></canvas>
+      <div class="rec-dot" id="recDot"><i></i> REC</div>
+      <div class="canvas-hint" id="hint">
+        <strong>The easel is empty.</strong>
+        <span>Load at least two pieces, pick a cut, and hit <b>Remix</b>.</span>
+      </div>
+    </div>
+
+    <div class="placard" id="placard" hidden>
+      <div class="work-title" id="pTitle">Remix No. —</div>
+      <div class="medium" id="pMedium">Mixed media on chain</div>
+      <div class="cat" id="pCat">seed —<br>tokens —</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn accent" id="remixBtn" disabled>⟳ Remix</button>
+      <button class="btn secondary" id="reshuffleBtn" disabled>Reshuffle seed</button>
+      <span style="flex:1"></span>
+      <button class="btn secondary" id="pngBtn" disabled>Save PNG</button>
+      <button class="btn secondary" id="bannerBtn" disabled>X banner</button>
+      <button class="btn" id="shareBtn" disabled>Share on X</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  CHOP SHOP STUDIO · community tool for the Pikkazo collection · unofficial, unaffiliated, un-serious ·
+  every still remix is reproducible from its seed + token list · art belongs to its holders
+</footer>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const DEFAULT_CONTRACT = "";            // e.g. "0x...."
+const SITE_URL         = "";            // your vercel URL, used in share text
+const RPCS = [
+  "https://eth.llamarpc.com",
+  "https://ethereum-rpc.publicnode.com",
+  "https://rpc.ankr.com/eth",
+  "https://cloudflare-eth.com"
+];
+const IPFS_GATEWAYS = [
+  "https://ipfs.io/ipfs/",
+  "https://dweb.link/ipfs/",
+  "https://gateway.pinata.cloud/ipfs/"
+];
+
+/* ============================================================
+   state
+   ============================================================ */
+const S = 1200;
+let pieces = [];                                   // {id, img, demo}
+let mode = "shatter";
+let filterMode = "none";
+let seed = (Math.random() * 0xffffffff) >>> 0;
+let remixCount = 0;
+let frags = [];                                    // built per remix
+let composed = false;
+
+const anim = { mode:"off", speed:1, raf:0, t0:0, lastSwap:0, running:false };
+const grid = { rows:4, cols:4, cells:[], brush:0, invBrush:false, painting:false };
+
+const FILTERS = {
+  none:"none",
+  invert:"invert(1)",
+  noir:"grayscale(1) contrast(1.3)",
+  heat:"hue-rotate(150deg) saturate(1.7)",
+  pop:"saturate(1.9) contrast(1.15)"
+};
+const CHAOS_POOL = ["none","invert(1)","grayscale(1) contrast(1.3)","hue-rotate(150deg) saturate(1.7)","saturate(1.9) contrast(1.15)","hue-rotate(280deg)"];
+
+const $ = (id) => document.getElementById(id);
+const stage = $("stage");
+const ctx = stage.getContext("2d");
+if (DEFAULT_CONTRACT) $("contract").value = DEFAULT_CONTRACT;
+
+/* ============================================================
+   seeded RNG — the placard seed reproduces the exact still.
+   ============================================================ */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ============================================================
+   chain plumbing — raw eth_call tokenURI, TOLLBOUND-style
+   ============================================================ */
+async function ethCall(to, data){
+  for (const rpc of RPCS){
+    try{
+      const r = await fetch(rpc, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ jsonrpc:"2.0", id:1, method:"eth_call", params:[{ to, data }, "latest"] })
+      });
+      const j = await r.json();
+      if (j.result && j.result !== "0x") return j.result;
+    }catch(e){}
+  }
+  throw new Error("all RPCs failed");
+}
+const tokenURIData = (id) => "0xc87b56dd" + BigInt(id).toString(16).padStart(64, "0");
+
+function decodeAbiString(hex){
+  const raw = hex.slice(2);
+  const len = parseInt(raw.slice(64, 128), 16);
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = parseInt(raw.substr(128 + i * 2, 2), 16);
+  return new TextDecoder().decode(bytes);
+}
+const ipfsCandidates = (uri) => IPFS_GATEWAYS.map(g => g + uri.replace("ipfs://","").replace(/^ipfs\//,""));
+
+async function fetchJson(uri){
+  if (uri.startsWith("data:application/json;base64,")) return JSON.parse(atob(uri.split(",")[1]));
+  if (uri.startsWith("data:application/json")) return JSON.parse(decodeURIComponent(uri.split(",").slice(1).join(",")));
+  const urls = uri.startsWith("ipfs://") ? ipfsCandidates(uri) : [uri];
+  for (const u of urls){ try{ const r = await fetch(u); if (r.ok) return await r.json(); }catch(e){} }
+  throw new Error("metadata unreachable");
+}
+function loadImg(url){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+async function fetchImage(uri){
+  if (uri.startsWith("data:")) return loadImg(uri);
+  const urls = uri.startsWith("ipfs://") ? ipfsCandidates(uri) : [uri];
+  for (const u of urls){
+    try{ return await loadImg(u); }catch(e){}
+    try{ return await loadImg("https://wsrv.nl/?url=" + encodeURIComponent(u.replace(/^https?:\/\//,"")) + "&w=900"); }catch(e){}
+  }
+  throw new Error("image unreachable");
+}
+
+/* ============================================================
+   loading pieces
+   ============================================================ */
+async function loadPieces(){
+  const contract = $("contract").value.trim();
+  const ids = $("tokens").value.split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+  if (!/^0x[0-9a-fA-F]{40}$/.test(contract)) return setStatus("That contract address doesn't look right — 0x + 40 hex chars.", true);
+  if (!ids.length) return setStatus("Enter at least one token ID.", true);
+  if (ids.some(i => !/^\d+$/.test(i))) return setStatus("Token IDs must be numbers.", true);
+
+  $("loadBtn").disabled = true;
+  for (const id of ids){
+    if (pieces.length >= 6){ setStatus("Table's full — six pieces max.", true); break; }
+    if (pieces.some(p => p.id === id && !p.demo)) continue;
+    setStatus(`Fetching #${id} from the chain…`);
+    try{
+      const uri  = decodeAbiString(await ethCall(contract, tokenURIData(id)));
+      const meta = await fetchJson(uri);
+      if (!meta.image && !meta.image_data) throw new Error("no image in metadata");
+      const img  = await fetchImage(meta.image || ("data:image/svg+xml;utf8," + encodeURIComponent(meta.image_data)));
+      pieces.push({ id, img, demo:false });
+      renderPieces();
+      setStatus(`#${id} on the table.`);
+    }catch(e){ setStatus(`#${id}: ${e.message}`, true); }
+  }
+  $("loadBtn").disabled = false;
+  onPiecesChanged();
+}
+
+/* demo pieces — procedural cubist stand-ins */
+function makeDemoFace(rng){
+  const c = document.createElement("canvas");
+  c.width = c.height = 800;
+  const g = c.getContext("2d");
+  const pal = ["#C9972F","#A8402A","#2C4A5E","#EDE7D8","#211E1A","#7A8B6F","#D4B483"];
+  const pick = () => pal[(rng() * pal.length) | 0];
+  g.fillStyle = pick(); g.fillRect(0, 0, 800, 800);
+  for (let i = 0; i < 4; i++){
+    g.fillStyle = pick(); g.globalAlpha = .5 + rng() * .4;
+    g.beginPath(); g.moveTo(rng()*800, rng()*800);
+    for (let k = 0; k < 3; k++) g.lineTo(rng()*800, rng()*800);
+    g.closePath(); g.fill();
+  }
+  g.globalAlpha = 1;
+  g.fillStyle = pick();
+  g.beginPath();
+  g.moveTo(400 + (rng()*60-30), 120);
+  g.lineTo(640, 240 + rng()*60); g.lineTo(600, 620 + rng()*40);
+  g.lineTo(400 + (rng()*80-40), 700); g.lineTo(200, 600 + rng()*40);
+  g.lineTo(160, 260 + rng()*60);
+  g.closePath(); g.fill();
+  g.strokeStyle = "#211E1A"; g.lineWidth = 8; g.stroke();
+  g.fillStyle = "#211E1A";
+  g.beginPath(); g.arc(300 + rng()*40, 320 + rng()*60, 34 + rng()*18, 0, 7); g.fill();
+  g.fillStyle = pick();
+  g.fillRect(470 + rng()*30, 260 + rng()*80, 90, 46);
+  g.strokeStyle = "#211E1A"; g.lineWidth = 10;
+  g.beginPath(); g.moveTo(400, 360); g.lineTo(360 + rng()*80, 460); g.lineTo(420, 480); g.stroke();
+  g.fillStyle = pick();
+  g.beginPath();
+  g.moveTo(310, 560); g.lineTo(500, 540 + rng()*40); g.lineTo(480, 610); g.lineTo(330, 620);
+  g.closePath(); g.fill(); g.stroke();
+  return c;
+}
+function addDemoPieces(){
+  const rng = mulberry32((Math.random()*0xffffffff)>>>0);
+  const n = Math.min(4, 6 - pieces.length);
+  for (let i = 0; i < n; i++) pieces.push({ id:"demo-" + ((rng()*9999)|0), img:makeDemoFace(rng), demo:true });
+  renderPieces();
+  setStatus(n ? "Demo pieces on the table. The blades work the same on the real thing." : "Table's full — six pieces max.", !n);
+  onPiecesChanged();
+}
+
+function pieceThumb(p, size){
+  if (p.img instanceof HTMLCanvasElement){
+    const mini = document.createElement("canvas");
+    mini.width = mini.height = size;
+    mini.getContext("2d").drawImage(p.img, 0, 0, size, size);
+    return mini;
+  }
+  return p.img.cloneNode();
+}
+
+function renderPieces(){
+  const box = $("pieces");
+  box.innerHTML = "";
+  $("piecesEmpty").style.display = pieces.length ? "none" : "block";
+  pieces.forEach((p, i) => {
+    const d = document.createElement("button");
+    d.className = "piece";
+    d.title = "Remove " + p.id;
+    d.setAttribute("aria-label", "Remove piece " + p.id);
+    d.appendChild(pieceThumb(p, 160));
+    const t = document.createElement("span");
+    t.className = "tid";
+    t.textContent = p.demo ? p.id : "#" + p.id;
+    d.appendChild(t);
+    d.onclick = () => { pieces.splice(i, 1); renderPieces(); onPiecesChanged(); };
+    box.appendChild(d);
+  });
+  renderDonorChips();
+}
+
+function onPiecesChanged(){
+  grid.cells.forEach(c => { if (c.donor >= pieces.length) c.donor = 0; });
+  frags.forEach(f => { if (f.donor >= pieces.length) f.donor = 0; });
+  if (grid.brush >= pieces.length) grid.brush = 0;
+  renderDonorChips();
+  syncButtons();
+  if (composed && pieces.length >= 2) draw(performance.now());
+}
+
+/* ============================================================
+   geometry helpers
+   ============================================================ */
+function clipPoly(poly){
+  ctx.beginPath();
+  poly.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+  ctx.closePath();
+}
+function splitPolygon(poly, px, py, ang){
+  const nx = Math.cos(ang + Math.PI/2), ny = Math.sin(ang + Math.PI/2);
+  const side = ([x, y]) => (x - px) * nx + (y - py) * ny;
+  const A = [], B = [];
+  for (let i = 0; i < poly.length; i++){
+    const cur = poly[i], nxt = poly[(i+1) % poly.length];
+    const sc = side(cur), sn = side(nxt);
+    (sc >= 0 ? A : B).push(cur);
+    if ((sc >= 0) !== (sn >= 0)){
+      const t = sc / (sc - sn);
+      const p = [cur[0] + t*(nxt[0]-cur[0]), cur[1] + t*(nxt[1]-cur[1])];
+      A.push(p); B.push(p);
+    }
+  }
+  return [A, B].filter(p => p.length >= 3);
+}
+function polyArea(p){
+  let a = 0;
+  for (let i = 0; i < p.length; i++){
+    const [x1,y1] = p[i], [x2,y2] = p[(i+1)%p.length];
+    a += x1*y2 - x2*y1;
+  }
+  return Math.abs(a/2);
+}
+function polyBounds(p){
+  const xs = p.map(v=>v[0]), ys = p.map(v=>v[1]);
+  const x = Math.min(...xs), y = Math.min(...ys);
+  return [x, y, Math.max(...xs)-x, Math.max(...ys)-y];
+}
+function bspShards(rng, count){
+  let polys = [[[0,0],[S,0],[S,S],[0,S]]];
+  while (polys.length < count){
+    polys.sort((a,b) => polyArea(b) - polyArea(a));
+    const target = polys.shift();
+    const [bx,by,bw,bh] = polyBounds(target);
+    const parts = splitPolygon(target, bx + bw*(.3+rng()*.4), by + bh*(.3+rng()*.4), rng()*Math.PI);
+    if (parts.length < 2){ polys.push(target); break; }
+    polys.push(...parts);
+  }
+  return polys;
+}
+
+/* ============================================================
+   fragment builders — every cut produces frags[], the animation
+   engine then breathes on the same fragment list.
+   frag: {kind, geo…, donor, jx, jy, js, phase, filter}
+   ============================================================ */
+function rnd(rng, a, b){ return a + rng()*(b-a); }
+function newFrag(rng, extra){
+  return Object.assign({
+    donor:(rng()*pieces.length)|0,
+    jx:rnd(rng,-25,25), jy:rnd(rng,-25,25), js:rnd(rng,.96,1.06),
+    phase:rng()*Math.PI*2,
+    filter:null
+  }, extra);
+}
+
+function buildShatter(rng){
+  return bspShards(rng, 14 + (rng()*10|0)).map(poly => newFrag(rng, { kind:"poly", poly }));
+}
+function buildStrips(rng){
+  const vertical = rng() > .35, out = [];
+  let pos = 0;
+  while (pos < S){
+    const w = rnd(rng, 60, 260);
+    out.push(newFrag(rng, { kind:"rect", rect: vertical ? [pos,0,w,S] : [0,pos,S,w] }));
+    pos += w;
+  }
+  return out;
+}
+function buildSplit(rng){
+  const n = Math.min(pieces.length, 2 + (rng()*3|0));
+  const order = [...Array(pieces.length).keys()].sort(() => rng()-.5).slice(0, n);
+  const bounds = [0];
+  for (let i = 1; i < n; i++) bounds.push((S/n)*i + rnd(rng,-40,40));
+  bounds.push(S);
+  const out = [];
+  for (let i = 0; i < n; i++){
+    const x0 = bounds[i], x1 = bounds[i+1], lean = rnd(rng,-30,30);
+    const poly = [[x0+(i?lean:0),0],[x1+(i<n-1?-lean:0),0],[x1+(i<n-1?lean:0),S],[x0+(i?-lean:0),S]];
+    const f = newFrag(rng, { kind:"poly", poly });
+    f.donor = order[i];
+    out.push(f);
+  }
+  return out;
+}
+function buildKaleido(rng){
+  const n = 8 + 2*(rng()*4|0);          // 8–14 wedges
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(newFrag(rng, { kind:"wedge", i, n, base:rng()*Math.PI*2 }));
+  const shared = out[0].base;           // all wedges share one base rotation
+  out.forEach(f => f.base = shared);
+  return out;
+}
+function buildDiamond(rng){
+  const d = S / (3 + (rng()*3|0));      // half-diagonal
+  const out = [];
+  let row = 0;
+  for (let cy = 0; cy <= S + d; cy += d, row++){
+    const off = row % 2 ? d : 0;
+    for (let cx = off - 2*d; cx <= S + 2*d; cx += 2*d){
+      const poly = [[cx,cy-d],[cx+d,cy],[cx,cy+d],[cx-d,cy]];
+      out.push(newFrag(rng, { kind:"poly", poly }));
+    }
+  }
+  return out;
+}
+function buildWeave(rng){
+  const nb = 6 + (rng()*4|0);
+  const xs = [0], ys = [0];
+  for (let i = 1; i < nb; i++){ xs.push(S*i/nb + rnd(rng,-30,30)); ys.push(S*i/nb + rnd(rng,-30,30)); }
+  xs.push(S); ys.push(S);
+  const out = [];
+  const hDon = [], vDon = [];
+  for (let i = 0; i < nb; i++){ hDon.push((rng()*pieces.length)|0); vDon.push((rng()*pieces.length)|0); }
+  // horizontal bands underneath
+  for (let j = 0; j < nb; j++){
+    const f = newFrag(rng, { kind:"rect", rect:[0, ys[j], S, ys[j+1]-ys[j]] });
+    f.donor = hDon[j];
+    out.push(f);
+  }
+  // vertical band cells woven on top at alternating crossings
+  for (let i = 0; i < nb; i++) for (let j = 0; j < nb; j++){
+    if ((i + j) % 2) continue;
+    const f = newFrag(rng, { kind:"rect", rect:[xs[i], ys[j], xs[i+1]-xs[i], ys[j+1]-ys[j]], weaveTop:true });
+    f.donor = vDon[i];
+    out.push(f);
+  }
+  return out;
+}
+function buildStudio(rng){
+  ensureGrid(rng);
+  const cw = S / grid.cols, ch = S / grid.rows;
+  const out = [];
+  for (let j = 0; j < grid.rows; j++) for (let i = 0; i < grid.cols; i++){
+    const cell = grid.cells[j*grid.cols + i];
+    const f = newFrag(rng, { kind:"rect", rect:[i*cw, j*ch, cw, ch], cellRef:cell });
+    f.donor = cell.donor;
+    f.filter = cell.inv ? "invert(1)" : null;
+    out.push(f);
+  }
+  return out;
+}
+function ensureGrid(rng){
+  const need = grid.rows * grid.cols;
+  if (grid.cells.length !== need){
+    const r = rng || mulberry32(seed);
+    grid.cells = Array.from({length:need}, () => ({ donor:(r()*Math.max(pieces.length,1))|0, inv:false }));
+  }
+}
+
+const BUILDERS = { shatter:buildShatter, strips:buildStrips, split:buildSplit, kaleido:buildKaleido, diamond:buildDiamond, weave:buildWeave, studio:buildStudio };
+
+/* ============================================================
+   render
+   ============================================================ */
+function drawRegionFrom(img, sx, sy, sw, sh, jx, jy, js){
+  const w = img.width || 800, h = img.height || 800;
+  const fx = w / S, fy = h / S;
+  let rx = (sx + jx) * fx, ry = (sy + jy) * fy;
+  let rw = sw * fx * js,   rh = sh * fy * js;
+  rx = Math.max(0, Math.min(rx, w - 2)); ry = Math.max(0, Math.min(ry, h - 2));
+  rw = Math.min(rw, w - rx);             rh = Math.min(rh, h - ry);
+  ctx.drawImage(img, rx, ry, rw, rh, sx, sy, sw, sh);
+}
+
+function animOffsets(f, t){
+  const sp = anim.speed;
+  let jx = f.jx, jy = f.jy, js = f.js, rot = 0;
+  if (anim.mode === "drift"){
+    jx += Math.sin(t/900*sp + f.phase) * 30;
+    jy += Math.cos(t/1100*sp + f.phase) * 30;
+    rot = t/9000*sp;
+  } else if (anim.mode === "pulse"){
+    js *= 1 + Math.sin(t/700*sp + f.phase) * .07;
+    rot = t/12000*sp;
+  } else if (anim.mode === "shuffle"){
+    rot = t/16000*sp;
+  }
+  return { jx, jy, js, rot };
+}
+
+function fragFilter(f){
+  if (f.filter) return f.filter;                    // per-cell invert wins
+  if (filterMode === "chaos") return f.chaos || "none";
+  return FILTERS[filterMode] || "none";
+}
+
+function renderFrag(f, t, edges){
+  const img = pieces[f.donor % pieces.length].img;
+  const { jx, jy, js, rot } = animOffsets(f, t);
+  if (f.kind === "wedge"){
+    const c = S/2, R = 1000, half = Math.PI / f.n;
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.rotate(f.base + rot + f.i * 2 * Math.PI / f.n);
+    if (f.i % 2) ctx.scale(1, -1);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(R * Math.cos(-half), R * Math.sin(-half));
+    ctx.lineTo(R, 0);
+    ctx.lineTo(R * Math.cos(half), R * Math.sin(half));
+    ctx.closePath();
+    ctx.clip();
+    ctx.filter = fragFilter(f);
+    const w = img.width || 800, h = img.height || 800;
+    ctx.drawImage(img, 0, 0, w, h, -700 + jx*2, -700 + jy*2, 1400*js, 1400*js);
+    ctx.filter = "none";
+    if (edges){
+      ctx.strokeStyle = "rgba(247,243,232,.8)"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(R*Math.cos(half), R*Math.sin(half)); ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+  const isRect = f.kind === "rect";
+  const [bx, by, bw, bh] = isRect ? f.rect : polyBounds(f.poly);
+  ctx.save();
+  if (isRect){ ctx.beginPath(); ctx.rect(bx, by, bw, bh); }
+  else clipPoly(f.poly);
+  ctx.clip();
+  ctx.filter = fragFilter(f);
+  drawRegionFrom(img, bx, by, bw, bh, jx, jy, js);
+  ctx.filter = "none";
+  if (edges){
+    ctx.strokeStyle = f.weaveTop ? "rgba(33,30,26,.5)" : "rgba(247,243,232,.85)";
+    ctx.lineWidth = f.weaveTop ? 3 : 4.5;
+    ctx.stroke();
+    if (!isRect){
+      ctx.strokeStyle = "rgba(33,30,26,.5)"; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function idList(){ return pieces.map(p => p.demo ? p.id : "#" + p.id).join(", "); }
+
+function drawSignature(){
+  const h = 54;
+  ctx.fillStyle = "#211E1A"; ctx.fillRect(0, S-h, S, h);
+  ctx.fillStyle = "#C9972F"; ctx.fillRect(0, S-h, 10, h);
+  ctx.fillStyle = "#EDE7D8";
+  ctx.font = "600 24px 'IBM Plex Mono', monospace";
+  ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  ctx.fillText("CHOP SHOP STUDIO · PIKKAZO REMIX · " + idList(), 26, S - h/2 + 1);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#A8402A";
+  ctx.fillText("seed " + seed.toString(16), S - 22, S - h/2 + 1);
+  ctx.textAlign = "left";
+}
+
+function draw(t){
+  ctx.clearRect(0, 0, S, S);
+  ctx.fillStyle = "#EDE7D8"; ctx.fillRect(0, 0, S, S);
+  const edges = $("edges").checked;
+  for (const f of frags) renderFrag(f, t, edges);
+  if ($("sig").checked) drawSignature();
+}
+
+/* ============================================================
+   remix + animation loop
+   ============================================================ */
+function remix(newSeed){
+  if (pieces.length < 2) return setStatus("Need at least two pieces to make a cut.", true);
+  if (newSeed) seed = (Math.random() * 0xffffffff) >>> 0;
+  remixCount++;
+  const rng = mulberry32(seed);
+  frags = BUILDERS[mode](rng);
+  if (filterMode === "chaos") frags.forEach(f => f.chaos = CHAOS_POOL[(rng()*CHAOS_POOL.length)|0]);
+  composed = true;
+  $("hint").classList.add("hidden");
+  updatePlacard();
+  syncButtons();
+  setStatus("");
+  draw(performance.now());
+  ensureLoop();
+}
+
+function ensureLoop(){
+  if (anim.mode === "off" || !composed){
+    cancelAnimationFrame(anim.raf);
+    anim.running = false;
+    if (composed) draw(performance.now());
+    return;
+  }
+  if (anim.running) return;
+  anim.running = true;
+  const tick = (t) => {
+    if (anim.mode === "shuffle" && t - anim.lastSwap > 750 / anim.speed && frags.length){
+      anim.lastSwap = t;
+      for (let k = 0; k < 1 + (Math.random()*3|0); k++){
+        const f = frags[(Math.random()*frags.length)|0];
+        f.donor = (f.donor + 1 + (Math.random()*(pieces.length-1)|0)) % pieces.length;
+      }
+    }
+    draw(t);
+    if (anim.running) anim.raf = requestAnimationFrame(tick);
+  };
+  anim.raf = requestAnimationFrame(tick);
+}
+
+/* ============================================================
+   grid studio — paint cells with donor / invert brushes
+   ============================================================ */
+function renderDonorChips(){
+  const row = $("donorRow");
+  row.querySelectorAll(".donor-chip").forEach(el => el.remove());
+  const anchor = $("invTool");
+  pieces.forEach((p, i) => {
+    const b = document.createElement("button");
+    b.className = "donor-chip";
+    b.title = "Paint with " + (p.demo ? p.id : "#" + p.id);
+    b.setAttribute("aria-label", b.title);
+    b.setAttribute("aria-pressed", String(!grid.invBrush && grid.brush === i));
+    b.appendChild(pieceThumb(p, 68));
+    b.onclick = () => { grid.brush = i; grid.invBrush = false; renderDonorChips(); };
+    row.insertBefore(b, anchor);
+  });
+  $("invTool").setAttribute("aria-pressed", String(grid.invBrush));
+}
+
+function canvasCell(e){
+  const r = stage.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (S / r.width);
+  const y = (e.clientY - r.top)  * (S / r.height);
+  const i = Math.min(grid.cols - 1, Math.max(0, (x / (S/grid.cols)) | 0));
+  const j = Math.min(grid.rows - 1, Math.max(0, (y / (S/grid.rows)) | 0));
+  return j * grid.cols + i;
+}
+
+function paintCell(e){
+  if (mode !== "studio" || !composed || !pieces.length) return;
+  const idx = canvasCell(e);
+  const cell = grid.cells[idx];
+  if (!cell) return;
+  if (grid.invBrush){
+    if (grid.lastPainted === idx) return;      // don't flip-flop while dragging
+    cell.inv = !cell.inv;
+  } else cell.donor = grid.brush;
+  grid.lastPainted = idx;
+  const f = frags.find(fr => fr.cellRef === cell);
+  if (f){ f.donor = cell.donor; f.filter = cell.inv ? "invert(1)" : null; }
+  if (anim.mode === "off") draw(performance.now());
+}
+
+stage.addEventListener("pointerdown", e => {
+  if (mode !== "studio") return;
+  grid.painting = true; grid.lastPainted = -1;
+  stage.setPointerCapture(e.pointerId);
+  paintCell(e);
+});
+stage.addEventListener("pointermove", e => { if (grid.painting) paintCell(e); });
+stage.addEventListener("pointerup",   () => { grid.painting = false; grid.lastPainted = -1; });
+
+function gridResize(){
+  grid.rows = Math.min(12, Math.max(2, parseInt($("gRows").value) || 4));
+  grid.cols = Math.min(12, Math.max(2, parseInt($("gCols").value) || 4));
+  $("gRows").value = grid.rows; $("gCols").value = grid.cols;
+  grid.cells = [];
+  if (mode === "studio" && composed) remix(false);
+}
+
+/* ============================================================
+   placard + exports
+   ============================================================ */
+const MEDIUM = {
+  shatter:"Shattered pikkazos", strips:"Sliced pikkazos", split:"Split pikkazos",
+  kaleido:"Kaleidoscoped pikkazos", diamond:"Diamond-cut pikkazos",
+  weave:"Woven pikkazos", studio:"Hand-set pikkazo mosaic"
+};
+function updatePlacard(){
+  $("placard").hidden = false;
+  $("pTitle").textContent = "Remix No. " + String(remixCount).padStart(3, "0");
+  $("pMedium").textContent = MEDIUM[mode] + " — mixed media on chain, " + new Date().getFullYear();
+  $("pCat").innerHTML = "seed " + seed.toString(16) + "<br>" + idList();
+}
+
+function savePng(){
+  const a = document.createElement("a");
+  a.download = "pikkazo-remix-" + seed.toString(16) + ".png";
+  a.href = stage.toDataURL("image/png");
+  a.click();
+}
+
+function saveBanner(){
+  const b = document.createElement("canvas");
+  b.width = 1500; b.height = 500;
+  const g = b.getContext("2d");
+  g.fillStyle = "#211E1A"; g.fillRect(0, 0, 1500, 500);
+  const crops = [[0, 0], [300, 400], [600, 100]];
+  crops.forEach(([cx, cy], i) => {
+    g.save();
+    g.translate(270 + i * 480, 250);
+    g.rotate((i - 1) * .045);
+    g.drawImage(stage, cx, cy, 600, 600, -215, -215, 430, 430);
+    g.strokeStyle = ["#C9972F", "#A8402A", "#2C4A5E"][i]; g.lineWidth = 10;
+    g.strokeRect(-215, -215, 430, 430);
+    g.restore();
+  });
+  g.fillStyle = "#EDE7D8";
+  g.font = "600 26px 'IBM Plex Mono', monospace";
+  g.fillText("PIKKAZO REMIX · seed " + seed.toString(16), 40, 470);
+  const a = document.createElement("a");
+  a.download = "pikkazo-banner-" + seed.toString(16) + ".png";
+  a.href = b.toDataURL("image/png");
+  a.click();
+}
+
+/* WebM recording of the live animation */
+let recording = false;
+function recordWebM(){
+  if (recording || !composed) return;
+  if (!("MediaRecorder" in window) || !stage.captureStream)
+    return setStatus("This browser can't record canvas video — try Chrome or Firefox.", true);
+  if (anim.mode === "off") setStatus("Motion is set to STILL — recording a static clip. Pick SHUFFLE / DRIFT / PULSE for movement.");
+  const secs = Math.min(15, Math.max(2, parseInt($("recSecs").value) || 6));
+  const stream = stage.captureStream(30);
+  let rec;
+  try{ rec = new MediaRecorder(stream, { mimeType:"video/webm;codecs=vp9" }); }
+  catch(e){ try{ rec = new MediaRecorder(stream, { mimeType:"video/webm" }); }
+  catch(e2){ return setStatus("WebM recording unsupported here.", true); } }
+  const chunks = [];
+  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    recording = false;
+    $("recDot").classList.remove("on");
+    $("recBtn").disabled = false;
+    const blob = new Blob(chunks, { type:"video/webm" });
+    const a = document.createElement("a");
+    a.download = "pikkazo-remix-" + seed.toString(16) + ".webm";
+    a.href = URL.createObjectURL(blob);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    setStatus("Clip saved. X takes WebM uploads directly.");
+  };
+  recording = true;
+  $("recDot").classList.add("on");
+  $("recBtn").disabled = true;
+  rec.start();
+  setTimeout(() => rec.state !== "inactive" && rec.stop(), secs * 1000);
+}
+
+function shareX(){
+  const text = "Fresh cut from CHOP SHOP STUDIO 🔪🎨\n\nPikkazo remix of " + idList() +
+    "\nseed " + seed.toString(16) + " — same seed, same cut, verify it yourself." +
+    (SITE_URL ? "\n\n" + SITE_URL : "");
+  window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(text), "_blank");
+  setStatus("Attach your saved PNG or WebM to the post — X intents can't carry media.");
+}
+
+/* ============================================================
+   wiring
+   ============================================================ */
+function setStatus(msg, err){
+  const el = $("status");
+  el.textContent = msg;
+  el.className = "status" + (err ? " err" : "");
+}
+function syncButtons(){
+  const ready = pieces.length >= 2;
+  $("remixBtn").disabled = !ready;
+  $("reshuffleBtn").disabled = !ready;
+  ["pngBtn","bannerBtn","shareBtn","recBtn"].forEach(id => $(id).disabled = !composed);
+  $("gridRack").classList.toggle("on", mode === "studio");
+  stage.classList.toggle("paint", mode === "studio" && composed);
+}
+
+document.querySelectorAll(".mchip").forEach(chip => {
+  chip.onclick = () => {
+    document.querySelectorAll(".mchip").forEach(c => c.setAttribute("aria-pressed","false"));
+    chip.setAttribute("aria-pressed","true");
+    mode = chip.dataset.mode;
+    syncButtons();
+    if (pieces.length >= 2 && composed) remix(false);
+  };
+});
+document.querySelectorAll(".fchip").forEach(chip => {
+  chip.onclick = () => {
+    document.querySelectorAll(".fchip").forEach(c => c.setAttribute("aria-pressed","false"));
+    chip.setAttribute("aria-pressed","true");
+    filterMode = chip.dataset.filter;
+    if (composed){
+      if (filterMode === "chaos"){
+        const rng = mulberry32(seed ^ 0xC4A05);
+        frags.forEach(f => f.chaos = CHAOS_POOL[(rng()*CHAOS_POOL.length)|0]);
+      }
+      if (anim.mode === "off") draw(performance.now());
+    }
+  };
+});
+document.querySelectorAll(".achip").forEach(chip => {
+  chip.onclick = () => {
+    document.querySelectorAll(".achip").forEach(c => c.setAttribute("aria-pressed","false"));
+    chip.setAttribute("aria-pressed","true");
+    anim.mode = chip.dataset.anim;
+    ensureLoop();
+  };
+});
+
+$("speed").oninput      = () => { anim.speed = $("speed").value / 100; };
+$("loadBtn").onclick    = loadPieces;
+$("demoBtn").onclick    = addDemoPieces;
+$("remixBtn").onclick   = () => remix(false);
+$("reshuffleBtn").onclick = () => remix(true);
+$("pngBtn").onclick     = savePng;
+$("bannerBtn").onclick  = saveBanner;
+$("recBtn").onclick     = recordWebM;
+$("shareBtn").onclick   = shareX;
+$("edges").onchange     = () => { if (composed && anim.mode === "off") draw(performance.now()); };
+$("sig").onchange       = () => { if (composed && anim.mode === "off") draw(performance.now()); };
+$("gRows").onchange     = gridResize;
+$("gCols").onchange     = gridResize;
+$("gRandom").onclick    = () => { grid.cells = []; if (mode === "studio" && composed) remix(false); };
+$("gClear").onclick     = () => {
+  grid.cells.forEach(c => c.inv = false);
+  frags.forEach(f => { if (f.cellRef) f.filter = null; });
+  if (composed && anim.mode === "off") draw(performance.now());
+};
+$("invTool").onclick    = () => { grid.invBrush = !grid.invBrush; renderDonorChips(); };
+$("tokens").addEventListener("keydown", e => { if (e.key === "Enter") loadPieces(); });
+
+// blank easel wash
+ctx.fillStyle = "#EDE7D8";
+ctx.fillRect(0, 0, S, S);
+syncButtons();
+</script>
+</body>
+</html>
