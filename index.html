@@ -4,10 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chop Shop Studio — Pikkazo Remix Machine</title>
-<meta name="description" content="Cut your Pikkazos apart, animate the fragments, paint your own grids. Reads straight from Ethereum. No backend.">
+<meta name="description" content="Paste your wallet, chop your Pikkazos, cook animated grids. MP4 + GIF export. Reads straight from Ethereum. No backend.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha3/0.8.0/sha3.min.js"></script>
 <style>
 :root{
   --bone:#EDE7D8;
@@ -33,7 +36,7 @@ body{
 ::selection{background:var(--ochre);color:var(--ink)}
 
 /* ---------- header ---------- */
-header{position:relative;padding:40px 32px 26px;border-bottom:3px solid var(--ink);overflow:hidden}
+header{position:relative;padding:38px 32px 24px;border-bottom:3px solid var(--ink);overflow:hidden}
 .frag-title{display:flex;flex-wrap:wrap;gap:5px;align-items:flex-end;user-select:none}
 .frag-title span{
   font-family:'Archivo Black',sans-serif;
@@ -61,7 +64,7 @@ header .shard.s3{bottom:-20px;right:14%;width:70px;height:90px;background:var(--
 main{display:grid;grid-template-columns:330px 1fr;max-width:1320px;margin:0 auto}
 @media(max-width:940px){
   main{grid-template-columns:1fr}
-  header{padding:28px 20px 22px}
+  header{padding:26px 20px 20px}
   header .shard{display:none}
 }
 
@@ -74,7 +77,7 @@ main{display:grid;grid-template-columns:330px 1fr;max-width:1320px;margin:0 auto
   display:flex;align-items:center;gap:10px;margin:0 0 14px;
 }
 .panel-label::after{content:"";flex:1;height:1px;background:var(--ink);opacity:.35}
-.field{margin-bottom:14px}
+.field{margin-bottom:13px}
 .field label{display:block;font-size:12px;font-weight:600;letter-spacing:.04em;margin-bottom:6px}
 .field small{display:block;font-size:11px;opacity:.6;margin-top:5px;line-height:1.45}
 input[type=text]{
@@ -93,6 +96,7 @@ input[type=text]:focus-visible{box-shadow:3px 3px 0 var(--ochre)}
 .btn:focus-visible{outline:3px solid var(--oxide);outline-offset:2px}
 .btn.secondary{background:var(--paper-edge);color:var(--ink)}
 .btn.accent{background:var(--oxide);border-color:var(--oxide)}
+.btn.small{padding:7px 12px;font-size:12px}
 .btn[disabled]{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap}
 .status{
@@ -100,7 +104,13 @@ input[type=text]:focus-visible{box-shadow:3px 3px 0 var(--ochre)}
   min-height:18px;margin:11px 0 4px;color:var(--prussian);white-space:pre-wrap;
 }
 .status.err{color:var(--oxide)}
-.pieces{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:10px;margin-top:12px}
+details.adv{margin-top:12px}
+details.adv summary{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;cursor:pointer;opacity:.7;
+}
+details.adv[open] summary{margin-bottom:10px}
+.pieces{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:9px;margin-top:12px}
 .piece{
   position:relative;border:2px solid var(--ink);background:var(--paper-edge);
   aspect-ratio:1;cursor:pointer;box-shadow:3px 3px 0 rgba(33,30,26,.2);padding:0;
@@ -108,15 +118,15 @@ input[type=text]:focus-visible{box-shadow:3px 3px 0 var(--ochre)}
 .piece img,.piece canvas{width:100%;height:100%;object-fit:cover;display:block}
 .piece .tid{
   position:absolute;left:0;bottom:0;right:0;
-  font-family:'IBM Plex Mono',monospace;font-size:9.5px;
-  background:var(--ink);color:var(--bone);padding:2px 4px;text-align:center;
+  font-family:'IBM Plex Mono',monospace;font-size:9px;
+  background:var(--ink);color:var(--bone);padding:2px 3px;text-align:center;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .piece:hover::after{
-  content:"✕ remove";position:absolute;inset:0;
+  content:"✕";position:absolute;inset:0;
   display:flex;align-items:center;justify-content:center;
   background:rgba(168,64,42,.85);color:var(--bone);
-  font-size:10px;font-weight:600;letter-spacing:.06em;
+  font-size:16px;font-weight:600;
 }
 .pieces-empty{
   font-size:12px;opacity:.55;line-height:1.6;
@@ -125,7 +135,7 @@ input[type=text]:focus-visible{box-shadow:3px 3px 0 var(--ochre)}
 
 /* ---------- easel ---------- */
 .easel{padding:22px 26px 48px;display:flex;flex-direction:column;align-items:center}
-.rack{width:100%;max-width:660px;margin-bottom:14px}
+.rack{width:100%;max-width:660px;margin-bottom:13px}
 .rack .panel-label{margin-bottom:9px}
 .chips{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
 .chip{
@@ -135,18 +145,17 @@ input[type=text]:focus-visible{box-shadow:3px 3px 0 var(--ochre)}
 .chip[aria-pressed=true]{background:var(--prussian);color:var(--bone);box-shadow:3px 3px 0 var(--ochre)}
 .chip:focus-visible{outline:3px solid var(--oxide);outline-offset:2px}
 .chip.fchip[aria-pressed=true]{background:var(--oxide)}
+.chip.gchip{padding:6px}
+.chip.gchip .sw{display:block;width:44px;height:20px;border:1.5px solid var(--ink)}
 .chips .spacer{flex:1}
 .toggle{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;cursor:pointer;user-select:none}
 .toggle input{accent-color:var(--oxide);width:15px;height:15px}
-.mini{
-  font-family:'IBM Plex Mono',monospace;font-size:11px;
-  display:flex;align-items:center;gap:6px;
-}
+.mini{font-family:'IBM Plex Mono',monospace;font-size:11px;display:flex;align-items:center;gap:6px}
 .mini input[type=number]{
-  width:56px;font-family:inherit;font-size:12px;padding:6px 7px;
+  width:52px;font-family:inherit;font-size:12px;padding:6px 7px;
   border:2px solid var(--ink);background:var(--paper-edge);color:var(--ink);
 }
-.mini input[type=range]{accent-color:var(--oxide);width:110px}
+.mini input[type=range]{accent-color:var(--oxide);width:100px}
 
 /* grid studio sub-rack */
 #gridRack{display:none;background:var(--linen);border:2px solid var(--ink);padding:12px 14px;box-shadow:4px 4px 0 rgba(33,30,26,.15)}
@@ -211,7 +220,7 @@ footer{
   <h1 class="frag-title" aria-label="Chop Shop Studio">
     <span>C</span><span>H</span><span>O</span><span>P</span><span class="gap"></span><span>S</span><span>H</span><span>O</span><span>P</span><span class="gap"></span><span>S</span><span>T</span><span>U</span><span>D</span><span>I</span><span>O</span>
   </h1>
-  <p class="tagline">Pikkazo remix machine — <b>cut. paint. animate. exhibit.</b> Reads straight from Ethereum. No backend, no keys.</p>
+  <p class="tagline">Paste wallet → chop pikkazos → cook clips. <b>MP4 · GIF · PNG.</b> Straight from Ethereum, no keys, no backend.</p>
 </header>
 
 <main>
@@ -219,29 +228,37 @@ footer{
   <section class="materials" aria-label="Materials">
     <div class="panel-label">Materials</div>
 
-    <div class="field">
-      <label for="contract">Contract address</label>
+    <div class="field" id="contractField">
+      <label for="contract">Pikkazo contract</label>
       <input type="text" id="contract" placeholder="0x… (OpenSea → item → Details)" spellcheck="false">
-      <small>Read via public RPC <code>tokenURI()</code> only — nothing signed, nothing sent.</small>
     </div>
 
     <div class="field">
-      <label for="tokens">Token IDs</label>
-      <input type="text" id="tokens" placeholder="e.g. 12, 348, 9001" spellcheck="false">
-      <small>2–6 pieces. Yours, your friends' — every remix credits its donors.</small>
+      <label for="wallet">Your wallet</label>
+      <input type="text" id="wallet" placeholder="0x… or yourname.eth" spellcheck="false">
+      <small>Paste an address or ENS name — we peek at the chain, grab your pikkazos, and lay them on the chopping table. Read-only, nothing signed, ever.</small>
     </div>
 
     <div class="btn-row">
-      <button class="btn" id="loadBtn">Load pieces</button>
-      <button class="btn secondary" id="demoBtn" title="Generate placeholder cubist faces to test the machine">Demo pieces</button>
+      <button class="btn accent" id="walletBtn">🔪 Fetch my pikkazos</button>
+      <button class="btn secondary" id="demoBtn" title="No wallet handy? Chop some stand-ins">Demo pieces</button>
     </div>
 
     <div class="status" id="status" role="status" aria-live="polite"></div>
 
+    <details class="adv">
+      <summary>Load specific token IDs</summary>
+      <div class="field">
+        <input type="text" id="tokens" placeholder="e.g. 12, 348, 9001" spellcheck="false">
+        <small>Mix in friends' tokens — every remix credits its donors.</small>
+      </div>
+      <button class="btn secondary small" id="loadBtn">Load IDs</button>
+    </details>
+
     <div class="pieces" id="pieces"></div>
     <div class="pieces-empty" id="piecesEmpty">
-      No material on the table yet.<br>
-      Load token IDs from the chain, or press <b>Demo pieces</b> to try the blades on procedurally generated stand-ins.
+      The chopping table is empty.<br>
+      Paste your wallet above, or hit <b>Demo pieces</b> to try the blades on stand-ins.
     </div>
   </section>
 
@@ -251,33 +268,42 @@ footer{
     <div class="rack">
       <div class="panel-label">Cuts</div>
       <div class="chips" role="group" aria-label="Cut style">
-        <button class="chip mchip" data-mode="shatter" aria-pressed="true">SHATTER</button>
+        <button class="chip mchip" data-mode="studio"  aria-pressed="true">GRID STUDIO</button>
+        <button class="chip mchip" data-mode="wall"    aria-pressed="false">3D WALL</button>
+        <button class="chip mchip" data-mode="shatter" aria-pressed="false">SHATTER</button>
         <button class="chip mchip" data-mode="strips"  aria-pressed="false">STRIPS</button>
         <button class="chip mchip" data-mode="split"   aria-pressed="false">FACE SPLIT</button>
-        <button class="chip mchip" data-mode="kaleido" aria-pressed="false">KALEIDO</button>
         <button class="chip mchip" data-mode="diamond" aria-pressed="false">DIAMOND</button>
         <button class="chip mchip" data-mode="weave"   aria-pressed="false">WEAVE</button>
-        <button class="chip mchip" data-mode="studio"  aria-pressed="false">GRID STUDIO</button>
         <span class="spacer"></span>
         <label class="toggle"><input type="checkbox" id="edges" checked> Cut edges</label>
         <label class="toggle"><input type="checkbox" id="sig" checked> Signature</label>
       </div>
     </div>
 
-    <div class="rack" id="gridRackWrap">
+    <div class="rack">
       <div id="gridRack" aria-label="Grid studio controls">
         <div class="row">
           <span class="mini">rows <input type="number" id="gRows" min="2" max="12" value="4"></span>
           <span class="mini">cols <input type="number" id="gCols" min="2" max="12" value="4"></span>
-          <button class="btn secondary" id="gRandom" style="padding:7px 12px;font-size:12px">Fill random</button>
-          <button class="btn secondary" id="gClear" style="padding:7px 12px;font-size:12px">Clear inverts</button>
+          <span class="mini">gap <input type="range" id="gGap" min="0" max="40" value="14" aria-label="Cell gap"></span>
+          <button class="btn secondary small" id="gRandom">🎲 Fill random</button>
+          <button class="btn secondary small" id="gClear">Clear inverts</button>
         </div>
         <div class="row" id="donorRow">
           <span class="mini">brush:</span>
           <!-- donor chips injected -->
-          <button class="chip" id="invTool" aria-pressed="false" title="Toggle invert on cells">INVERT CELL</button>
+          <button class="chip" id="invTool" aria-pressed="false" title="Flip cells to their negative">INVERT CELL</button>
         </div>
-        <div class="tool-note">Pick a donor brush, then click or drag across the canvas to paint cells. The INVERT CELL brush flips any cell to its negative.</div>
+        <div class="tool-note">Pick a donor brush, then click or drag across the canvas to paint cells. Gaps let the backdrop glow through.</div>
+      </div>
+    </div>
+
+    <div class="rack">
+      <div class="panel-label">Backdrop</div>
+      <div class="chips" role="group" aria-label="Backdrop gradient" id="gradChips">
+        <!-- gradient chips injected -->
+        <span class="mini">mat <input type="range" id="mat" min="0" max="90" value="34" aria-label="Mat width"></span>
       </div>
     </div>
 
@@ -294,27 +320,22 @@ footer{
     </div>
 
     <div class="rack">
-      <div class="panel-label">Motion</div>
+      <div class="panel-label">Motion — mix &amp; match</div>
       <div class="chips" role="group" aria-label="Animation">
-        <button class="chip achip" data-anim="off"     aria-pressed="true">STILL</button>
-        <button class="chip achip" data-anim="shuffle" aria-pressed="false">SHUFFLE</button>
+        <button class="chip achip" data-anim="off"     aria-pressed="false">STILL</button>
+        <button class="chip achip" data-anim="shuffle" aria-pressed="true">SHUFFLE</button>
         <button class="chip achip" data-anim="drift"   aria-pressed="false">DRIFT</button>
         <button class="chip achip" data-anim="pulse"   aria-pressed="false">PULSE</button>
         <span class="mini">speed <input type="range" id="speed" min="25" max="300" value="100" aria-label="Animation speed"></span>
-        <span class="spacer"></span>
-        <span class="mini">rec
-          <input type="number" id="recSecs" min="2" max="15" value="6" aria-label="Recording seconds">s
-        </span>
-        <button class="btn secondary" id="recBtn" style="padding:7px 12px;font-size:12px" disabled>● Record WebM</button>
       </div>
     </div>
 
     <div class="canvas-frame">
       <canvas id="stage" width="1200" height="1200" aria-label="Remix canvas"></canvas>
-      <div class="rec-dot" id="recDot"><i></i> REC</div>
+      <div class="rec-dot" id="recDot"><i></i> <span id="recLabel">REC</span></div>
       <div class="canvas-hint" id="hint">
         <strong>The easel is empty.</strong>
-        <span>Load at least two pieces, pick a cut, and hit <b>Remix</b>.</span>
+        <span>Paste your wallet on the left — the first chop is automatic.</span>
       </div>
     </div>
 
@@ -326,10 +347,12 @@ footer{
 
     <div class="actions">
       <button class="btn accent" id="remixBtn" disabled>⟳ Remix</button>
-      <button class="btn secondary" id="reshuffleBtn" disabled>Reshuffle seed</button>
+      <button class="btn secondary" id="surpriseBtn" disabled>🎲 Surprise me</button>
       <span style="flex:1"></span>
-      <button class="btn secondary" id="pngBtn" disabled>Save PNG</button>
-      <button class="btn secondary" id="bannerBtn" disabled>X banner</button>
+      <span class="mini">clip <input type="number" id="recSecs" min="2" max="12" value="5" aria-label="Clip seconds">s</span>
+      <button class="btn secondary" id="pngBtn" disabled>PNG</button>
+      <button class="btn secondary" id="mp4Btn" disabled>🎬 MP4</button>
+      <button class="btn secondary" id="gifBtn" disabled>✨ GIF</button>
       <button class="btn" id="shareBtn" disabled>Share on X</button>
     </div>
   </section>
@@ -337,15 +360,16 @@ footer{
 
 <footer>
   CHOP SHOP STUDIO · community tool for the Pikkazo collection · unofficial, unaffiliated, un-serious ·
-  every still remix is reproducible from its seed + token list · art belongs to its holders
+  every still is reproducible from its seed + token list · art belongs to its holders
 </footer>
 
 <script>
 /* ============================================================
-   CONFIG
+   CONFIG — set the contract once and the field disappears
+   for everyone. Set SITE_URL for share text.
    ============================================================ */
 const DEFAULT_CONTRACT = "";            // e.g. "0x...."
-const SITE_URL         = "";            // your vercel URL, used in share text
+const SITE_URL         = "";            // your vercel URL
 const RPCS = [
   "https://eth.llamarpc.com",
   "https://ethereum-rpc.publicnode.com",
@@ -357,21 +381,25 @@ const IPFS_GATEWAYS = [
   "https://dweb.link/ipfs/",
   "https://gateway.pinata.cloud/ipfs/"
 ];
+const MAX_PIECES = 12;
 
 /* ============================================================
    state
    ============================================================ */
 const S = 1200;
-let pieces = [];                                   // {id, img, demo}
-let mode = "shatter";
+let pieces = [];
+let mode = "studio";
 let filterMode = "none";
+let gradKey = "pikka";
 let seed = (Math.random() * 0xffffffff) >>> 0;
 let remixCount = 0;
-let frags = [];                                    // built per remix
+let frags = [];
 let composed = false;
+let busy = false;                                  // recording / exporting
 
-const anim = { mode:"off", speed:1, raf:0, t0:0, lastSwap:0, running:false };
-const grid = { rows:4, cols:4, cells:[], brush:0, invBrush:false, painting:false };
+const anim = { modes:new Set(["shuffle"]), speed:1, raf:0, lastSwap:0, running:false };
+const animOff = () => anim.modes.size === 0;
+const grid = { rows:4, cols:4, gap:14, cells:[], brush:0, invBrush:false, painting:false, lastPainted:-1 };
 
 const FILTERS = {
   none:"none",
@@ -382,13 +410,27 @@ const FILTERS = {
 };
 const CHAOS_POOL = ["none","invert(1)","grayscale(1) contrast(1.3)","hue-rotate(150deg) saturate(1.7)","saturate(1.9) contrast(1.15)","hue-rotate(280deg)"];
 
+/* backdrop gradients — [angle-ish start/end handled below] */
+const GRADS = {
+  pikka:  { name:"PIKKA",  stops:["#C9972F","#A8402A","#2C4A5E"] },
+  gold:   { name:"GOLD",   stops:["#F5D989","#C9972F","#7A5313"] },
+  vapor:  { name:"VAPOR",  stops:["#FF9EC4","#B487F5","#5EE0E6"] },
+  ember:  { name:"EMBER",  stops:["#3D0F0A","#A8402A","#F0A05A"] },
+  ocean:  { name:"OCEAN",  stops:["#0E2233","#2C4A5E","#63B0A8"] },
+  acid:   { name:"ACID",   stops:["#C6F542","#3EC97A","#0E5C4A"] },
+  mono:   { name:"MONO",   stops:["#211E1A","#5A554C","#B9B2A2"] }
+};
+
 const $ = (id) => document.getElementById(id);
 const stage = $("stage");
-const ctx = stage.getContext("2d");
-if (DEFAULT_CONTRACT) $("contract").value = DEFAULT_CONTRACT;
+const sctx = stage.getContext("2d");
+const art = document.createElement("canvas");      // fragments render here
+art.width = art.height = S;
+const ctx = art.getContext("2d");
+if (DEFAULT_CONTRACT){ $("contract").value = DEFAULT_CONTRACT; $("contractField").style.display = "none"; }
 
 /* ============================================================
-   seeded RNG — the placard seed reproduces the exact still.
+   seeded RNG
    ============================================================ */
 function mulberry32(a){
   return function(){
@@ -400,23 +442,26 @@ function mulberry32(a){
 }
 
 /* ============================================================
-   chain plumbing — raw eth_call tokenURI, TOLLBOUND-style
+   chain plumbing — raw JSON-RPC, TOLLBOUND-style
    ============================================================ */
-async function ethCall(to, data){
-  for (const rpc of RPCS){
+async function rpc(method, params){
+  for (const url of RPCS){
     try{
-      const r = await fetch(rpc, {
+      const r = await fetch(url, {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ jsonrpc:"2.0", id:1, method:"eth_call", params:[{ to, data }, "latest"] })
+        body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params })
       });
       const j = await r.json();
-      if (j.result && j.result !== "0x") return j.result;
+      if (j.result !== undefined && j.result !== null) return j.result;
     }catch(e){}
   }
-  throw new Error("all RPCs failed");
+  throw new Error("all RPCs ghosted us");
 }
-const tokenURIData = (id) => "0xc87b56dd" + BigInt(id).toString(16).padStart(64, "0");
+const ethCall = (to, data) => rpc("eth_call", [{ to, data }, "latest"]);
+const pad = (hex) => hex.replace(/^0x/,"").toLowerCase().padStart(64, "0");
+const SEL = { tokenURI:"0xc87b56dd", balanceOf:"0x70a08231", tokenOfOwnerByIndex:"0x2f745c59", ownerOf:"0x6352211e" };
+const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 function decodeAbiString(hex){
   const raw = hex.slice(2);
@@ -453,32 +498,181 @@ async function fetchImage(uri){
   throw new Error("image unreachable");
 }
 
-/* ============================================================
-   loading pieces
-   ============================================================ */
-async function loadPieces(){
-  const contract = $("contract").value.trim();
+function getContract(){
+  const c = $("contract").value.trim();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(c)){
+    setStatus("Contract address first — 0x + 40 hex chars. Grab it from any Pikkazo's Details tab on OpenSea.", true);
+    return null;
+  }
+  return c;
+}
+
+/* -------- ENS: beast.eth → 0x…, fully on-chain -------- */
+const ENS_REGISTRY = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e";
+function namehash(name){
+  let node = new Uint8Array(32);
+  if (name){
+    for (const label of name.toLowerCase().split(".").reverse()){
+      const lh = keccak256.array(label);
+      const buf = new Uint8Array(64);
+      buf.set(node, 0); buf.set(lh, 32);
+      node = Uint8Array.from(keccak256.array(buf));
+    }
+  }
+  return [...node].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function resolveWalletInput(input){
+  if (/^0x[0-9a-fA-F]{40}$/.test(input)) return input;
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)*\.eth$/i.test(input)){
+    if (typeof keccak256 === "undefined") throw new Error("ENS engine didn't load — paste the 0x address instead");
+    setStatus("Resolving " + input + " 🪪");
+    const node = namehash(input);
+    const resolverRes = await ethCall(ENS_REGISTRY, "0x0178b8bf" + node);       // resolver(bytes32)
+    const resolver = "0x" + resolverRes.slice(-40);
+    if (/^0x0{40}$/.test(resolver)) throw new Error(input + " isn't registered");
+    const addrRes = await ethCall(resolver, "0x3b3b57de" + node);               // addr(bytes32)
+    const addr = "0x" + addrRes.slice(-40);
+    if (/^0x0{40}$/.test(addr)) throw new Error(input + " has no address set");
+    setStatus(input + " → " + addr.slice(0, 6) + "…" + addr.slice(-4) + " ✅");
+    return addr;
+  }
+  return null;
+}
+
+async function addToken(contract, id){
+  if (pieces.length >= MAX_PIECES) return false;
+  if (pieces.some(p => p.id === id && !p.demo)) return true;
+  const uri  = decodeAbiString(await ethCall(contract, SEL.tokenURI + pad(BigInt(id).toString(16))));
+  const meta = await fetchJson(uri);
+  if (!meta.image && !meta.image_data) throw new Error("no image in metadata");
+  const img  = await fetchImage(meta.image || ("data:image/svg+xml;utf8," + encodeURIComponent(meta.image_data)));
+  pieces.push({ id, img, demo:false });
+  renderPieces();
+  return true;
+}
+
+/* -------- wallet flow: API route → enumerable → log-scan -------- */
+async function apiWalletIds(contract, wallet){
+  // Deployed with api/wallet.js + ALCHEMY_API_KEY? One call, ~1s.
+  try{
+    const r = await fetch(`/api/wallet?owner=${wallet}&contract=${contract}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!Array.isArray(j.tokens)) return null;
+    return j.tokens;                                  // [{id, image}]
+  }catch(e){ return null; }
+}
+
+async function walletTokenIds(contract, wallet){
+  // 1) polite route: ERC721Enumerable (parallel index reads)
+  try{
+    const bal = parseInt(await ethCall(contract, SEL.balanceOf + pad(wallet)), 16);
+    if (!bal) return [];
+    const n = Math.min(bal, MAX_PIECES * 2);
+    const reads = Array.from({length:n}, (_, i) =>
+      ethCall(contract, SEL.tokenOfOwnerByIndex + pad(wallet) + pad(i.toString(16))).then(r => BigInt(r).toString())
+    );
+    return await Promise.all(reads);
+  }catch(e){ /* contract isn't enumerable — go digging */ }
+
+  // 2) chunked Transfer-log scan, parallel batches of 6
+  setStatus("Contract keeps no index — digging through Transfer logs 🪏");
+  const latest = parseInt(await rpc("eth_blockNumber", []), 16);
+  const CHUNK = 50000, MAX_CHUNKS = 44;
+  const candidates = new Set();
+  for (let k = 0; k < MAX_CHUNKS && candidates.size < MAX_PIECES * 3; k += 6){
+    const batch = [];
+    for (let b = k; b < Math.min(k + 6, MAX_CHUNKS); b++){
+      const to = latest - b * CHUNK;
+      const from = Math.max(0, to - CHUNK + 1);
+      batch.push(rpc("eth_getLogs", [{
+        address: contract,
+        fromBlock: "0x" + from.toString(16),
+        toBlock:   "0x" + to.toString(16),
+        topics: [TRANSFER_TOPIC, null, "0x" + pad(wallet)]
+      }]).catch(() => []));
+    }
+    setStatus(`Digging through Transfer logs 🪏 pass ${Math.min(k+6, MAX_CHUNKS)}/${MAX_CHUNKS}…`);
+    for (const logs of await Promise.all(batch))
+      for (const l of logs) if (l.topics && l.topics[3]) candidates.add(BigInt(l.topics[3]).toString());
+  }
+  // confirm current ownership, in parallel
+  const checks = [...candidates].slice(0, MAX_PIECES * 2).map(id =>
+    ethCall(contract, SEL.ownerOf + pad(BigInt(id).toString(16)))
+      .then(o => ("0x" + o.slice(-40)).toLowerCase() === wallet.toLowerCase() ? id : null)
+      .catch(() => null)
+  );
+  return (await Promise.all(checks)).filter(Boolean);
+}
+
+async function plateTokens(contract, list){
+  // list: [{id, image?}] — plates in parallel, keeps table order stable
+  const slots = list.slice(0, MAX_PIECES - pieces.length);
+  let done = 0;
+  const jobs = slots.map(async (tk) => {
+    try{
+      if (pieces.some(p => p.id === tk.id && !p.demo)) return null;
+      let img;
+      if (tk.image){                                   // API gave us a cached URL — skip tokenURI entirely
+        img = await fetchImage(tk.image);
+      } else {
+        const uri  = decodeAbiString(await ethCall(contract, SEL.tokenURI + pad(BigInt(tk.id).toString(16))));
+        const meta = await fetchJson(uri);
+        if (!meta.image && !meta.image_data) throw new Error("no image");
+        img = await fetchImage(meta.image || ("data:image/svg+xml;utf8," + encodeURIComponent(meta.image_data)));
+      }
+      done++;
+      setStatus(`Plating pikkazos… ${done}/${slots.length} 🍽️`);
+      return { id: tk.id, img, demo:false };
+    }catch(e){ return null; }
+  });
+  const plated = (await Promise.all(jobs)).filter(Boolean);
+  for (const p of plated) if (pieces.length < MAX_PIECES) pieces.push(p);
+  renderPieces();
+  return plated.length;
+}
+
+async function loadWallet(){
+  const contract = getContract(); if (!contract) return;
+  const raw = $("wallet").value.trim();
+  $("walletBtn").disabled = true;
+  let wallet = null;
+  try{ wallet = await resolveWalletInput(raw); }
+  catch(e){ setStatus(e.message, true); $("walletBtn").disabled = false; return; }
+  if (!wallet){
+    setStatus("That doesn't look like a wallet — paste 0x + 40 hex chars, or an ENS name like beast.eth", true);
+    $("walletBtn").disabled = false;
+    return;
+  }
+  setStatus("Knocking on the chain… 🔍");
+  try{
+    let tokens = await apiWalletIds(contract, wallet);           // fast lane
+    if (!tokens) tokens = (await walletTokenIds(contract, wallet)).map(id => ({ id }));  // scenic route
+    if (!tokens.length){ setStatus("No pikkazos in this wallet. Floor's cheap — fix that, then come back 😉", true); }
+    else {
+      const got = await plateTokens(contract, tokens);
+      setStatus(got ? `${got} pikkazo${got>1?"s":""} on the table. Chop's on the house 🔪` : "Found tokens but their images wouldn't load.", !got);
+      if (pieces.length >= 2 && !composed) remix(true);
+    }
+  }catch(e){ setStatus("Chain dig failed: " + e.message, true); }
+  $("walletBtn").disabled = false;
+  onPiecesChanged();
+}
+
+async function loadIds(){
+  const contract = getContract(); if (!contract) return;
   const ids = $("tokens").value.split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
-  if (!/^0x[0-9a-fA-F]{40}$/.test(contract)) return setStatus("That contract address doesn't look right — 0x + 40 hex chars.", true);
   if (!ids.length) return setStatus("Enter at least one token ID.", true);
   if (ids.some(i => !/^\d+$/.test(i))) return setStatus("Token IDs must be numbers.", true);
-
   $("loadBtn").disabled = true;
   for (const id of ids){
-    if (pieces.length >= 6){ setStatus("Table's full — six pieces max.", true); break; }
-    if (pieces.some(p => p.id === id && !p.demo)) continue;
+    if (pieces.length >= MAX_PIECES){ setStatus("Table's full — twelve pieces max.", true); break; }
     setStatus(`Fetching #${id} from the chain…`);
-    try{
-      const uri  = decodeAbiString(await ethCall(contract, tokenURIData(id)));
-      const meta = await fetchJson(uri);
-      if (!meta.image && !meta.image_data) throw new Error("no image in metadata");
-      const img  = await fetchImage(meta.image || ("data:image/svg+xml;utf8," + encodeURIComponent(meta.image_data)));
-      pieces.push({ id, img, demo:false });
-      renderPieces();
-      setStatus(`#${id} on the table.`);
-    }catch(e){ setStatus(`#${id}: ${e.message}`, true); }
+    try{ await addToken(contract, id); setStatus(`#${id} on the table.`); }
+    catch(e){ setStatus(`#${id}: ${e.message}`, true); }
   }
   $("loadBtn").disabled = false;
+  if (pieces.length >= 2 && !composed) remix(true);
   onPiecesChanged();
 }
 
@@ -519,10 +713,11 @@ function makeDemoFace(rng){
 }
 function addDemoPieces(){
   const rng = mulberry32((Math.random()*0xffffffff)>>>0);
-  const n = Math.min(4, 6 - pieces.length);
+  const n = Math.min(4, MAX_PIECES - pieces.length);
   for (let i = 0; i < n; i++) pieces.push({ id:"demo-" + ((rng()*9999)|0), img:makeDemoFace(rng), demo:true });
   renderPieces();
-  setStatus(n ? "Demo pieces on the table. The blades work the same on the real thing." : "Table's full — six pieces max.", !n);
+  setStatus(n ? "Stand-ins on the table. The blades don't know the difference 🔪" : "Table's full — twelve pieces max.", !n);
+  if (pieces.length >= 2 && !composed) remix(true);
   onPiecesChanged();
 }
 
@@ -535,7 +730,6 @@ function pieceThumb(p, size){
   }
   return p.img.cloneNode();
 }
-
 function renderPieces(){
   const box = $("pieces");
   box.innerHTML = "";
@@ -555,23 +749,26 @@ function renderPieces(){
   });
   renderDonorChips();
 }
-
 function onPiecesChanged(){
   grid.cells.forEach(c => { if (c.donor >= pieces.length) c.donor = 0; });
   frags.forEach(f => { if (f.donor >= pieces.length) f.donor = 0; });
   if (grid.brush >= pieces.length) grid.brush = 0;
+  invertedCache.clear();
   renderDonorChips();
   syncButtons();
-  if (composed && pieces.length >= 2) draw(performance.now());
+  if (composed && pieces.length >= 2){
+    if (mode === "wall") remix(false);                 // rebuild tile textures
+    else if (animOff()) draw(performance.now());
+  }
 }
 
 /* ============================================================
-   geometry helpers
+   geometry
    ============================================================ */
-function clipPoly(poly){
-  ctx.beginPath();
-  poly.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
-  ctx.closePath();
+function clipPoly(g, poly){
+  g.beginPath();
+  poly.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y));
+  g.closePath();
 }
 function splitPolygon(poly, px, py, ang){
   const nx = Math.cos(ang + Math.PI/2), ny = Math.sin(ang + Math.PI/2);
@@ -616,9 +813,7 @@ function bspShards(rng, count){
 }
 
 /* ============================================================
-   fragment builders — every cut produces frags[], the animation
-   engine then breathes on the same fragment list.
-   frag: {kind, geo…, donor, jx, jy, js, phase, filter}
+   fragment builders
    ============================================================ */
 function rnd(rng, a, b){ return a + rng()*(b-a); }
 function newFrag(rng, extra){
@@ -629,7 +824,6 @@ function newFrag(rng, extra){
     filter:null
   }, extra);
 }
-
 function buildShatter(rng){
   return bspShards(rng, 14 + (rng()*10|0)).map(poly => newFrag(rng, { kind:"poly", poly }));
 }
@@ -659,16 +853,8 @@ function buildSplit(rng){
   }
   return out;
 }
-function buildKaleido(rng){
-  const n = 8 + 2*(rng()*4|0);          // 8–14 wedges
-  const out = [];
-  for (let i = 0; i < n; i++) out.push(newFrag(rng, { kind:"wedge", i, n, base:rng()*Math.PI*2 }));
-  const shared = out[0].base;           // all wedges share one base rotation
-  out.forEach(f => f.base = shared);
-  return out;
-}
 function buildDiamond(rng){
-  const d = S / (3 + (rng()*3|0));      // half-diagonal
+  const d = S / (3 + (rng()*3|0));
   const out = [];
   let row = 0;
   for (let cy = 0; cy <= S + d; cy += d, row++){
@@ -685,16 +871,13 @@ function buildWeave(rng){
   const xs = [0], ys = [0];
   for (let i = 1; i < nb; i++){ xs.push(S*i/nb + rnd(rng,-30,30)); ys.push(S*i/nb + rnd(rng,-30,30)); }
   xs.push(S); ys.push(S);
-  const out = [];
-  const hDon = [], vDon = [];
+  const out = [], hDon = [], vDon = [];
   for (let i = 0; i < nb; i++){ hDon.push((rng()*pieces.length)|0); vDon.push((rng()*pieces.length)|0); }
-  // horizontal bands underneath
   for (let j = 0; j < nb; j++){
     const f = newFrag(rng, { kind:"rect", rect:[0, ys[j], S, ys[j+1]-ys[j]] });
     f.donor = hDon[j];
     out.push(f);
   }
-  // vertical band cells woven on top at alternating crossings
   for (let i = 0; i < nb; i++) for (let j = 0; j < nb; j++){
     if ((i + j) % 2) continue;
     const f = newFrag(rng, { kind:"rect", rect:[xs[i], ys[j], xs[i+1]-xs[i], ys[j+1]-ys[j]], weaveTop:true });
@@ -705,11 +888,12 @@ function buildWeave(rng){
 }
 function buildStudio(rng){
   ensureGrid(rng);
+  const g = grid.gap;
   const cw = S / grid.cols, ch = S / grid.rows;
   const out = [];
   for (let j = 0; j < grid.rows; j++) for (let i = 0; i < grid.cols; i++){
     const cell = grid.cells[j*grid.cols + i];
-    const f = newFrag(rng, { kind:"rect", rect:[i*cw, j*ch, cw, ch], cellRef:cell });
+    const f = newFrag(rng, { kind:"rect", rect:[i*cw + g/2, j*ch + g/2, cw - g, ch - g], cellRef:cell });
     f.donor = cell.donor;
     f.filter = cell.inv ? "invert(1)" : null;
     out.push(f);
@@ -723,11 +907,167 @@ function ensureGrid(rng){
     grid.cells = Array.from({length:need}, () => ({ donor:(r()*Math.max(pieces.length,1))|0, inv:false }));
   }
 }
-
-const BUILDERS = { shatter:buildShatter, strips:buildStrips, split:buildSplit, kaleido:buildKaleido, diamond:buildDiamond, weave:buildWeave, studio:buildStudio };
+const BUILDERS = { shatter:buildShatter, strips:buildStrips, split:buildSplit, diamond:buildDiamond, weave:buildWeave, studio:buildStudio, wall:wallOrFallback };
+function wallOrFallback(rng){
+  if (typeof THREE === "undefined"){
+    setStatus("3D engine didn't load — check the connection. Serving a flat grid instead.", true);
+    mode = "studio";
+    document.querySelectorAll(".mchip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.mode === "studio")));
+    return buildStudio(rng);
+  }
+  return buildWall(rng);
+}
 
 /* ============================================================
-   render
+   3D WALL — Three.js tile wall. Renders to an offscreen WebGL
+   canvas, blitted onto the same 2D stage each frame so PNG /
+   MP4 / GIF export paths don't change at all.
+   ============================================================ */
+const wall = { ready:false, renderer:null, scene:null, camera:null, tiles:[], px:0, py:0, tx:0, ty:0 };
+const invertedCache = new Map();
+function invertedImage(i){
+  if (!invertedCache.has(i)){
+    const src = pieces[i].img;
+    const c = document.createElement("canvas");
+    c.width = src.width || 800; c.height = src.height || 800;
+    const g = c.getContext("2d");
+    g.filter = "invert(1)";
+    g.drawImage(src, 0, 0);
+    invertedCache.set(i, c);
+  }
+  return invertedCache.get(i);
+}
+function cellTexture(donor, i, j, inv){
+  const img = inv ? invertedImage(donor) : pieces[donor].img;
+  const tex = new THREE.Texture(img);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.repeat.set(1/grid.cols, 1/grid.rows);
+  tex.offset.set(i/grid.cols, 1 - (j+1)/grid.rows);   // same-region crop, cubist patchwork in 3D
+  tex.needsUpdate = true;
+  return tex;
+}
+function initWall(){
+  if (wall.ready) return;
+  wall.renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, preserveDrawingBuffer:true });
+  wall.renderer.setSize(S, S, false);
+  wall.scene = new THREE.Scene();
+  wall.camera = new THREE.PerspectiveCamera(38, 1, 10, 6000);
+  wall.camera.position.set(0, 0, 1650);
+  wall.ready = true;
+}
+function buildWall(rng){
+  initWall();
+  ensureGrid(rng);
+  // clear old tiles
+  wall.tiles.forEach(t => { wall.scene.remove(t.mesh); t.mesh.geometry.dispose(); t.mesh.material.map && t.mesh.material.map.dispose(); t.mesh.material.dispose(); });
+  wall.tiles = [];
+  const gap = grid.gap;
+  const cw = S/grid.cols, ch = S/grid.rows;
+  for (let j = 0; j < grid.rows; j++) for (let i = 0; i < grid.cols; i++){
+    const cell = grid.cells[j*grid.cols + i];
+    const geo = new THREE.PlaneGeometry(cw - gap, ch - gap);
+    const mat = new THREE.MeshBasicMaterial({ map: cellTexture(cell.donor, i, j, cell.inv) });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set((i + .5)*cw - S/2, S/2 - (j + .5)*ch, 0);
+    wall.scene.add(mesh);
+    const t = { mesh, cell, i, j, phase: rng()*Math.PI*2, flip:0, flipping:false, pendingDonor:null, pendingInv:null };
+    mesh.userData.tile = t;
+    wall.tiles.push(t);
+  }
+  // wall shares the frags list shape for shuffle bookkeeping
+  return wall.tiles.map(t => Object.assign(newFrag(rng, { kind:"tile", tileRef:t, cellRef:t.cell }), { donor:t.cell.donor }));
+}
+function tileFlipTo(t, donor, inv){
+  if (t.flipping) return;
+  t.flipping = true; t.flip = 0;
+  t.pendingDonor = donor; t.pendingInv = inv;
+}
+function wallShuffleStep(){
+  for (let k = 0; k < 1 + (Math.random()*3|0); k++){
+    const t = wall.tiles[(Math.random()*wall.tiles.length)|0];
+    if (!t || t.flipping) continue;
+    const next = (t.cell.donor + 1 + (Math.random()*(Math.max(pieces.length,2)-1)|0)) % pieces.length;
+    tileFlipTo(t, next, t.cell.inv);
+  }
+}
+function renderWall(t){
+  const sp = anim.speed;
+  // eased mouse parallax
+  wall.px += (wall.tx - wall.px) * .06;
+  wall.py += (wall.ty - wall.py) * .06;
+  wall.camera.position.x = wall.px * 200;
+  wall.camera.position.y = wall.py * -160;
+  wall.camera.lookAt(0, 0, 0);
+  for (const tile of wall.tiles){
+    const m = tile.mesh;
+    // motion styles — stack freely, mix and match
+    let z = 0, rx = 0, s = 1;
+    if (anim.modes.has("drift")){
+      z += Math.sin(t/900*sp + tile.phase) * 70;
+      rx = Math.sin(t/1300*sp + tile.phase) * .08;
+    }
+    if (anim.modes.has("pulse")) s = 1 + Math.sin(t/700*sp + tile.phase) * .06;
+    if (anim.modes.has("shuffle") && !anim.modes.has("drift")) z += Math.sin(t/1600*sp + tile.phase) * 25;
+    m.position.z = z; m.rotation.x = rx; m.scale.set(s, s, 1);
+    // flip tween
+    if (tile.flipping){
+      tile.flip = Math.min(1, tile.flip + .045 * sp);
+      m.rotation.y = tile.flip * Math.PI;
+      if (tile.flip >= .5 && tile.pendingDonor !== null){
+        tile.cell.donor = tile.pendingDonor;
+        tile.cell.inv = tile.pendingInv;
+        m.material.map && m.material.map.dispose();
+        m.material.map = cellTexture(tile.cell.donor, tile.i, tile.j, tile.cell.inv);
+        m.material.needsUpdate = true;
+        tile.pendingDonor = null;
+        tile.mirror = true;                                    // counter-mirror the back half of the flip
+      }
+      if (tile.flip >= 1){ tile.flipping = false; m.rotation.y = 0; tile.mirror = false; }
+    }
+    m.scale.x = Math.abs(m.scale.x) * (tile.mirror ? -1 : 1);
+  }
+  wall.renderer.render(wall.scene, wall.camera);
+  // composite onto the 2D stage: gradient → filtered blit → signature
+  drawBackdrop();
+  const m = matPx();
+  sctx.save();
+  if (filterMode !== "chaos") sctx.filter = FILTERS[filterMode] || "none";
+  sctx.drawImage(wall.renderer.domElement, 0, 0, S, S, m, m, S - 2*m, S - 2*m);
+  sctx.restore();
+  if ($("sig").checked) drawSignature();
+}
+/* pointer → wall interaction */
+stage.addEventListener("pointermove", e => {
+  const r = stage.getBoundingClientRect();
+  wall.tx = ((e.clientX - r.left) / r.width) * 2 - 1;
+  wall.ty = ((e.clientY - r.top) / r.height) * 2 - 1;
+});
+const raycaster = (typeof THREE !== "undefined") ? new THREE.Raycaster() : null;
+function wallPick(e){
+  if (!wall.ready || !raycaster) return null;
+  const r = stage.getBoundingClientRect();
+  const m = matPx(), scale = S / (S - 2*m);
+  const ax = ((e.clientX - r.left) * (S / r.width)  - m) * scale;
+  const ay = ((e.clientY - r.top)  * (S / r.height) - m) * scale;
+  if (ax < 0 || ay < 0 || ax >= S || ay >= S) return null;
+  raycaster.setFromCamera(new THREE.Vector2((ax/S)*2 - 1, -((ay/S)*2 - 1)), wall.camera);
+  const hit = raycaster.intersectObjects(wall.scene.children)[0];
+  return hit ? hit.object.userData.tile : null;
+}
+function wallPaint(e){
+  if (mode !== "wall" || !composed || !pieces.length) return;
+  const tile = wallPick(e);
+  if (!tile) return;
+  if (grid.invBrush) tileFlipTo(tile, tile.cell.donor, !tile.cell.inv);
+  else if (tile.cell.donor !== grid.brush) tileFlipTo(tile, grid.brush, tile.cell.inv);
+}
+stage.addEventListener("pointerdown", e => { if (mode === "wall") wallPaint(e); });
+
+/* ============================================================
+   render — fragments go on the art layer (transparent gaps),
+   the stage gets gradient backdrop + art + signature.
    ============================================================ */
 function drawRegionFrom(img, sx, sy, sw, sh, jx, jy, js){
   const w = img.width || 800, h = img.height || 800;
@@ -738,61 +1078,31 @@ function drawRegionFrom(img, sx, sy, sw, sh, jx, jy, js){
   rw = Math.min(rw, w - rx);             rh = Math.min(rh, h - ry);
   ctx.drawImage(img, rx, ry, rw, rh, sx, sy, sw, sh);
 }
-
 function animOffsets(f, t){
   const sp = anim.speed;
-  let jx = f.jx, jy = f.jy, js = f.js, rot = 0;
-  if (anim.mode === "drift"){
+  let jx = f.jx, jy = f.jy, js = f.js;
+  if (anim.modes.has("drift")){
     jx += Math.sin(t/900*sp + f.phase) * 30;
     jy += Math.cos(t/1100*sp + f.phase) * 30;
-    rot = t/9000*sp;
-  } else if (anim.mode === "pulse"){
-    js *= 1 + Math.sin(t/700*sp + f.phase) * .07;
-    rot = t/12000*sp;
-  } else if (anim.mode === "shuffle"){
-    rot = t/16000*sp;
   }
-  return { jx, jy, js, rot };
+  if (anim.modes.has("pulse")){
+    js *= 1 + Math.sin(t/700*sp + f.phase) * .07;
+  }
+  return { jx, jy, js };
 }
-
 function fragFilter(f){
-  if (f.filter) return f.filter;                    // per-cell invert wins
+  if (f.filter) return f.filter;
   if (filterMode === "chaos") return f.chaos || "none";
   return FILTERS[filterMode] || "none";
 }
-
 function renderFrag(f, t, edges){
   const img = pieces[f.donor % pieces.length].img;
-  const { jx, jy, js, rot } = animOffsets(f, t);
-  if (f.kind === "wedge"){
-    const c = S/2, R = 1000, half = Math.PI / f.n;
-    ctx.save();
-    ctx.translate(c, c);
-    ctx.rotate(f.base + rot + f.i * 2 * Math.PI / f.n);
-    if (f.i % 2) ctx.scale(1, -1);
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(R * Math.cos(-half), R * Math.sin(-half));
-    ctx.lineTo(R, 0);
-    ctx.lineTo(R * Math.cos(half), R * Math.sin(half));
-    ctx.closePath();
-    ctx.clip();
-    ctx.filter = fragFilter(f);
-    const w = img.width || 800, h = img.height || 800;
-    ctx.drawImage(img, 0, 0, w, h, -700 + jx*2, -700 + jy*2, 1400*js, 1400*js);
-    ctx.filter = "none";
-    if (edges){
-      ctx.strokeStyle = "rgba(247,243,232,.8)"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(R*Math.cos(half), R*Math.sin(half)); ctx.stroke();
-    }
-    ctx.restore();
-    return;
-  }
+  const { jx, jy, js } = animOffsets(f, t);
   const isRect = f.kind === "rect";
   const [bx, by, bw, bh] = isRect ? f.rect : polyBounds(f.poly);
   ctx.save();
   if (isRect){ ctx.beginPath(); ctx.rect(bx, by, bw, bh); }
-  else clipPoly(f.poly);
+  else clipPoly(ctx, f.poly);
   ctx.clip();
   ctx.filter = fragFilter(f);
   drawRegionFrom(img, bx, by, bw, bh, jx, jy, js);
@@ -801,34 +1111,42 @@ function renderFrag(f, t, edges){
     ctx.strokeStyle = f.weaveTop ? "rgba(33,30,26,.5)" : "rgba(247,243,232,.85)";
     ctx.lineWidth = f.weaveTop ? 3 : 4.5;
     ctx.stroke();
-    if (!isRect){
-      ctx.strokeStyle = "rgba(33,30,26,.5)"; ctx.lineWidth = 1.5; ctx.stroke();
-    }
+    if (!isRect){ ctx.strokeStyle = "rgba(33,30,26,.5)"; ctx.lineWidth = 1.5; ctx.stroke(); }
   }
   ctx.restore();
 }
-
 function idList(){ return pieces.map(p => p.demo ? p.id : "#" + p.id).join(", "); }
 
+function drawBackdrop(){
+  const gdef = GRADS[gradKey];
+  const g = sctx.createLinearGradient(0, 0, S, S);
+  gdef.stops.forEach((c, i) => g.addColorStop(i / (gdef.stops.length - 1), c));
+  sctx.fillStyle = g;
+  sctx.fillRect(0, 0, S, S);
+}
 function drawSignature(){
   const h = 54;
-  ctx.fillStyle = "#211E1A"; ctx.fillRect(0, S-h, S, h);
-  ctx.fillStyle = "#C9972F"; ctx.fillRect(0, S-h, 10, h);
-  ctx.fillStyle = "#EDE7D8";
-  ctx.font = "600 24px 'IBM Plex Mono', monospace";
-  ctx.textBaseline = "middle"; ctx.textAlign = "left";
-  ctx.fillText("CHOP SHOP STUDIO · PIKKAZO REMIX · " + idList(), 26, S - h/2 + 1);
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#A8402A";
-  ctx.fillText("seed " + seed.toString(16), S - 22, S - h/2 + 1);
-  ctx.textAlign = "left";
+  sctx.fillStyle = "#211E1A"; sctx.fillRect(0, S-h, S, h);
+  sctx.fillStyle = GRADS[gradKey].stops[0]; sctx.fillRect(0, S-h, 10, h);
+  sctx.fillStyle = "#EDE7D8";
+  sctx.font = "600 24px 'IBM Plex Mono', monospace";
+  sctx.textBaseline = "middle"; sctx.textAlign = "left";
+  sctx.fillText("CHOP SHOP STUDIO · PIKKAZO REMIX · " + idList(), 26, S - h/2 + 1);
+  sctx.textAlign = "right";
+  sctx.fillStyle = "#C9972F";
+  sctx.fillText("seed " + seed.toString(16), S - 22, S - h/2 + 1);
+  sctx.textAlign = "left";
 }
+function matPx(){ return parseInt($("mat").value) || 0; }
 
 function draw(t){
+  if (mode === "wall" && wall.ready){ renderWall(t); return; }
   ctx.clearRect(0, 0, S, S);
-  ctx.fillStyle = "#EDE7D8"; ctx.fillRect(0, 0, S, S);
   const edges = $("edges").checked;
   for (const f of frags) renderFrag(f, t, edges);
+  drawBackdrop();
+  const m = matPx();
+  sctx.drawImage(art, 0, 0, S, S, m, m, S - 2*m, S - 2*m);
   if ($("sig").checked) drawSignature();
 }
 
@@ -850,9 +1168,18 @@ function remix(newSeed){
   draw(performance.now());
   ensureLoop();
 }
-
+function shuffleStep(){
+  if (mode === "wall"){ wallShuffleStep(); return; }
+  for (let k = 0; k < 1 + (Math.random()*3|0); k++){
+    const f = frags[(Math.random()*frags.length)|0];
+    if (!f) continue;
+    f.donor = (f.donor + 1 + (Math.random()*(Math.max(pieces.length,2)-1)|0)) % pieces.length;
+    if (f.cellRef) f.cellRef.donor = f.donor;
+  }
+}
 function ensureLoop(){
-  if (anim.mode === "off" || !composed){
+  const needsLoop = !animOff() || mode === "wall";            // wall always breathes (parallax + flips)
+  if (!needsLoop || !composed){
     cancelAnimationFrame(anim.raf);
     anim.running = false;
     if (composed) draw(performance.now());
@@ -861,12 +1188,9 @@ function ensureLoop(){
   if (anim.running) return;
   anim.running = true;
   const tick = (t) => {
-    if (anim.mode === "shuffle" && t - anim.lastSwap > 750 / anim.speed && frags.length){
+    if (anim.modes.has("shuffle") && t - anim.lastSwap > 750 / anim.speed && frags.length){
       anim.lastSwap = t;
-      for (let k = 0; k < 1 + (Math.random()*3|0); k++){
-        const f = frags[(Math.random()*frags.length)|0];
-        f.donor = (f.donor + 1 + (Math.random()*(pieces.length-1)|0)) % pieces.length;
-      }
+      shuffleStep();
     }
     draw(t);
     if (anim.running) anim.raf = requestAnimationFrame(tick);
@@ -875,7 +1199,7 @@ function ensureLoop(){
 }
 
 /* ============================================================
-   grid studio — paint cells with donor / invert brushes
+   grid studio painting
    ============================================================ */
 function renderDonorChips(){
   const row = $("donorRow");
@@ -893,31 +1217,32 @@ function renderDonorChips(){
   });
   $("invTool").setAttribute("aria-pressed", String(grid.invBrush));
 }
-
 function canvasCell(e){
   const r = stage.getBoundingClientRect();
-  const x = (e.clientX - r.left) * (S / r.width);
-  const y = (e.clientY - r.top)  * (S / r.height);
-  const i = Math.min(grid.cols - 1, Math.max(0, (x / (S/grid.cols)) | 0));
-  const j = Math.min(grid.rows - 1, Math.max(0, (y / (S/grid.rows)) | 0));
+  const m = matPx();
+  const scale = S / (S - 2*m);
+  const x = ((e.clientX - r.left) * (S / r.width)  - m) * scale;
+  const y = ((e.clientY - r.top)  * (S / r.height) - m) * scale;
+  if (x < 0 || y < 0 || x >= S || y >= S) return -1;
+  const i = Math.min(grid.cols - 1, (x / (S/grid.cols)) | 0);
+  const j = Math.min(grid.rows - 1, (y / (S/grid.rows)) | 0);
   return j * grid.cols + i;
 }
-
 function paintCell(e){
   if (mode !== "studio" || !composed || !pieces.length) return;
   const idx = canvasCell(e);
+  if (idx < 0) return;
   const cell = grid.cells[idx];
   if (!cell) return;
   if (grid.invBrush){
-    if (grid.lastPainted === idx) return;      // don't flip-flop while dragging
+    if (grid.lastPainted === idx) return;
     cell.inv = !cell.inv;
   } else cell.donor = grid.brush;
   grid.lastPainted = idx;
   const f = frags.find(fr => fr.cellRef === cell);
   if (f){ f.donor = cell.donor; f.filter = cell.inv ? "invert(1)" : null; }
-  if (anim.mode === "off") draw(performance.now());
+  if (animOff()) draw(performance.now());
 }
-
 stage.addEventListener("pointerdown", e => {
   if (mode !== "studio") return;
   grid.painting = true; grid.lastPainted = -1;
@@ -932,16 +1257,16 @@ function gridResize(){
   grid.cols = Math.min(12, Math.max(2, parseInt($("gCols").value) || 4));
   $("gRows").value = grid.rows; $("gCols").value = grid.cols;
   grid.cells = [];
-  if (mode === "studio" && composed) remix(false);
+  if ((mode === "studio" || mode === "wall") && composed) remix(false);
 }
 
 /* ============================================================
-   placard + exports
+   placard
    ============================================================ */
 const MEDIUM = {
   shatter:"Shattered pikkazos", strips:"Sliced pikkazos", split:"Split pikkazos",
-  kaleido:"Kaleidoscoped pikkazos", diamond:"Diamond-cut pikkazos",
-  weave:"Woven pikkazos", studio:"Hand-set pikkazo mosaic"
+  diamond:"Diamond-cut pikkazos", weave:"Woven pikkazos", studio:"Hand-set pikkazo mosaic",
+  wall:"Pikkazo wall relief, three dimensions"
 };
 function updatePlacard(){
   $("placard").hidden = false;
@@ -950,69 +1275,121 @@ function updatePlacard(){
   $("pCat").innerHTML = "seed " + seed.toString(16) + "<br>" + idList();
 }
 
+/* ============================================================
+   exports — PNG, MP4 (with WebM fallback), GIF
+   ============================================================ */
+function download(name, href){
+  const a = document.createElement("a");
+  a.download = name; a.href = href; a.click();
+}
 function savePng(){
-  const a = document.createElement("a");
-  a.download = "pikkazo-remix-" + seed.toString(16) + ".png";
-  a.href = stage.toDataURL("image/png");
-  a.click();
+  download("pikkazo-remix-" + seed.toString(16) + ".png", stage.toDataURL("image/png"));
 }
 
-function saveBanner(){
-  const b = document.createElement("canvas");
-  b.width = 1500; b.height = 500;
-  const g = b.getContext("2d");
-  g.fillStyle = "#211E1A"; g.fillRect(0, 0, 1500, 500);
-  const crops = [[0, 0], [300, 400], [600, 100]];
-  crops.forEach(([cx, cy], i) => {
-    g.save();
-    g.translate(270 + i * 480, 250);
-    g.rotate((i - 1) * .045);
-    g.drawImage(stage, cx, cy, 600, 600, -215, -215, 430, 430);
-    g.strokeStyle = ["#C9972F", "#A8402A", "#2C4A5E"][i]; g.lineWidth = 10;
-    g.strokeRect(-215, -215, 430, 430);
-    g.restore();
-  });
-  g.fillStyle = "#EDE7D8";
-  g.font = "600 26px 'IBM Plex Mono', monospace";
-  g.fillText("PIKKAZO REMIX · seed " + seed.toString(16), 40, 470);
-  const a = document.createElement("a");
-  a.download = "pikkazo-banner-" + seed.toString(16) + ".png";
-  a.href = b.toDataURL("image/png");
-  a.click();
+function pickVideoMime(){
+  const wants = [
+    ['video/mp4;codecs="avc1.42E01E"', "mp4"],
+    ["video/mp4", "mp4"],
+    ["video/webm;codecs=vp9", "webm"],
+    ["video/webm", "webm"]
+  ];
+  for (const [m, ext] of wants)
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return [m, ext];
+  return [null, null];
 }
 
-/* WebM recording of the live animation */
-let recording = false;
-function recordWebM(){
-  if (recording || !composed) return;
-  if (!("MediaRecorder" in window) || !stage.captureStream)
-    return setStatus("This browser can't record canvas video — try Chrome or Firefox.", true);
-  if (anim.mode === "off") setStatus("Motion is set to STILL — recording a static clip. Pick SHUFFLE / DRIFT / PULSE for movement.");
-  const secs = Math.min(15, Math.max(2, parseInt($("recSecs").value) || 6));
+function recordVideo(){
+  if (busy || !composed) return;
+  const [mime, ext] = pickVideoMime();
+  if (!mime || !stage.captureStream) return setStatus("This browser can't record canvas video — try Chrome.", true);
+  if (animOff() && mode !== "wall") setStatus("Motion is on STILL — this will be a very calm clip. Toggle SHUFFLE / DRIFT / PULSE, mix them freely 🌀");
+  const secs = Math.min(12, Math.max(2, parseInt($("recSecs").value) || 5));
   const stream = stage.captureStream(30);
-  let rec;
-  try{ rec = new MediaRecorder(stream, { mimeType:"video/webm;codecs=vp9" }); }
-  catch(e){ try{ rec = new MediaRecorder(stream, { mimeType:"video/webm" }); }
-  catch(e2){ return setStatus("WebM recording unsupported here.", true); } }
+  const rec = new MediaRecorder(stream, { mimeType:mime, videoBitsPerSecond: 8_000_000 });
   const chunks = [];
   rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
   rec.onstop = () => {
-    recording = false;
-    $("recDot").classList.remove("on");
-    $("recBtn").disabled = false;
-    const blob = new Blob(chunks, { type:"video/webm" });
-    const a = document.createElement("a");
-    a.download = "pikkazo-remix-" + seed.toString(16) + ".webm";
-    a.href = URL.createObjectURL(blob);
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    setStatus("Clip saved. X takes WebM uploads directly.");
+    setBusy(false);
+    const blob = new Blob(chunks, { type:mime.split(";")[0] });
+    const url = URL.createObjectURL(blob);
+    download("pikkazo-remix-" + seed.toString(16) + "." + ext, url);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    setStatus(ext === "mp4" ? "MP4 plated 🎬 drop it straight into X." : "This browser can't do MP4 — saved WebM instead (X still takes it).");
   };
-  recording = true;
-  $("recDot").classList.add("on");
-  $("recBtn").disabled = true;
+  setBusy(true, "REC");
   rec.start();
   setTimeout(() => rec.state !== "inactive" && rec.stop(), secs * 1000);
+}
+
+/* GIF — deterministic offline render so shuffle beats land in the file */
+let gifWorkerUrl = null;
+async function getGifWorker(){
+  if (gifWorkerUrl) return gifWorkerUrl;
+  const r = await fetch("https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js");
+  gifWorkerUrl = URL.createObjectURL(new Blob([await r.text()], { type:"application/javascript" }));
+  return gifWorkerUrl;
+}
+async function saveGif(){
+  if (busy || !composed) return;
+  if (typeof GIF === "undefined") return setStatus("GIF engine didn't load — check the connection and refresh.", true);
+  setBusy(true, "GIF");
+  setStatus("Rolling the GIF… every frame hand-chopped 🎞️");
+  try{
+    const worker = await getGifWorker();
+    const secs = Math.min(8, Math.max(2, parseInt($("recSecs").value) || 5));
+    const fps = 14, frames = secs * fps;
+    const size = 640;
+    const off = document.createElement("canvas");
+    off.width = off.height = size;
+    const octx = off.getContext("2d");
+    const gif = new GIF({ workers:2, quality:12, width:size, height:size, workerScript:worker });
+
+    const wasRunning = anim.running;
+    cancelAnimationFrame(anim.raf); anim.running = false;
+
+    let t = performance.now(), lastSwap = t;
+    for (let i = 0; i < frames; i++){
+      if (anim.modes.has("shuffle") && t - lastSwap > 750 / anim.speed){ lastSwap = t; shuffleStep(); }
+      draw(t);
+      octx.drawImage(stage, 0, 0, size, size);
+      gif.addFrame(octx, { copy:true, delay: 1000/fps });
+      t += 1000 / fps;
+      if (i % 10 === 0){
+        setStatus(`Rolling the GIF… frame ${i+1}/${frames} 🎞️`);
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+    gif.on("progress", p => setStatus(`Squeezing pixels… ${Math.round(p*100)}% 🧃`));
+    gif.on("finished", blob => {
+      const url = URL.createObjectURL(blob);
+      download("pikkazo-remix-" + seed.toString(16) + ".gif", url);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      setStatus("GIF plated ✨ ready for X, Discord, wherever.");
+      setBusy(false);
+      if (wasRunning || !animOff()) ensureLoop(); else draw(performance.now());
+    });
+    gif.render();
+  }catch(e){
+    setBusy(false);
+    setStatus("GIF failed: " + e.message, true);
+    ensureLoop();
+  }
+}
+
+function surprise(){
+  const modes = Object.keys(BUILDERS);
+  mode = modes[(Math.random()*modes.length)|0];
+  document.querySelectorAll(".mchip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.mode === mode)));
+  const fkeys = ["none","invert","noir","heat","pop","chaos"];
+  filterMode = fkeys[(Math.random()*fkeys.length)|0];
+  document.querySelectorAll(".fchip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.filter === filterMode)));
+  const gkeys = Object.keys(GRADS);
+  gradKey = gkeys[(Math.random()*gkeys.length)|0];
+  document.querySelectorAll(".gchip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.grad === gradKey)));
+  grid.cells = [];
+  syncButtons();
+  remix(true);
+  setStatus("Chef's choice 👨‍🍳 " + mode.toUpperCase() + " + " + filterMode.toUpperCase() + " + " + GRADS[gradKey].name);
 }
 
 function shareX(){
@@ -1020,7 +1397,7 @@ function shareX(){
     "\nseed " + seed.toString(16) + " — same seed, same cut, verify it yourself." +
     (SITE_URL ? "\n\n" + SITE_URL : "");
   window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(text), "_blank");
-  setStatus("Attach your saved PNG or WebM to the post — X intents can't carry media.");
+  setStatus("Attach your MP4 / GIF / PNG to the post — X intents can't carry media.");
 }
 
 /* ============================================================
@@ -1031,14 +1408,44 @@ function setStatus(msg, err){
   el.textContent = msg;
   el.className = "status" + (err ? " err" : "");
 }
+function setBusy(on, label){
+  busy = on;
+  $("recDot").classList.toggle("on", on);
+  if (label) $("recLabel").textContent = label;
+  syncButtons();
+}
 function syncButtons(){
   const ready = pieces.length >= 2;
-  $("remixBtn").disabled = !ready;
-  $("reshuffleBtn").disabled = !ready;
-  ["pngBtn","bannerBtn","shareBtn","recBtn"].forEach(id => $(id).disabled = !composed);
-  $("gridRack").classList.toggle("on", mode === "studio");
-  stage.classList.toggle("paint", mode === "studio" && composed);
+  $("remixBtn").disabled = !ready || busy;
+  $("surpriseBtn").disabled = !ready || busy;
+  ["pngBtn","mp4Btn","gifBtn","shareBtn"].forEach(id => $(id).disabled = !composed || busy);
+  $("gridRack").classList.toggle("on", mode === "studio" || mode === "wall");
+  stage.classList.toggle("paint", (mode === "studio" || mode === "wall") && composed);
 }
+
+/* gradient chips */
+(function buildGradChips(){
+  const wrap = $("gradChips");
+  const anchor = wrap.querySelector(".mini");
+  Object.entries(GRADS).forEach(([key, g]) => {
+    const b = document.createElement("button");
+    b.className = "chip gchip";
+    b.dataset.grad = key;
+    b.title = g.name;
+    b.setAttribute("aria-label", "Backdrop " + g.name);
+    b.setAttribute("aria-pressed", String(key === gradKey));
+    const sw = document.createElement("span");
+    sw.className = "sw";
+    sw.style.background = "linear-gradient(120deg," + g.stops.join(",") + ")";
+    b.appendChild(sw);
+    b.onclick = () => {
+      gradKey = key;
+      document.querySelectorAll(".gchip").forEach(c => c.setAttribute("aria-pressed", String(c === b)));
+      if (composed && animOff()) draw(performance.now());
+    };
+    wrap.insertBefore(b, anchor);
+  });
+})();
 
 document.querySelectorAll(".mchip").forEach(chip => {
   chip.onclick = () => {
@@ -1059,44 +1466,59 @@ document.querySelectorAll(".fchip").forEach(chip => {
         const rng = mulberry32(seed ^ 0xC4A05);
         frags.forEach(f => f.chaos = CHAOS_POOL[(rng()*CHAOS_POOL.length)|0]);
       }
-      if (anim.mode === "off") draw(performance.now());
+      if (animOff()) draw(performance.now());
     }
   };
 });
+function syncAnimChips(){
+  document.querySelectorAll(".achip").forEach(c => {
+    const k = c.dataset.anim;
+    c.setAttribute("aria-pressed", String(k === "off" ? animOff() : anim.modes.has(k)));
+  });
+}
 document.querySelectorAll(".achip").forEach(chip => {
   chip.onclick = () => {
-    document.querySelectorAll(".achip").forEach(c => c.setAttribute("aria-pressed","false"));
-    chip.setAttribute("aria-pressed","true");
-    anim.mode = chip.dataset.anim;
+    const k = chip.dataset.anim;
+    if (k === "off") anim.modes.clear();
+    else anim.modes.has(k) ? anim.modes.delete(k) : anim.modes.add(k);
+    syncAnimChips();
     ensureLoop();
   };
 });
+syncAnimChips();
 
 $("speed").oninput      = () => { anim.speed = $("speed").value / 100; };
-$("loadBtn").onclick    = loadPieces;
+$("mat").oninput        = () => { if (composed && animOff()) draw(performance.now()); };
+$("gGap").oninput       = () => {
+  grid.gap = parseInt($("gGap").value) || 0;
+  if ((mode === "studio" || mode === "wall") && composed) remix(false);
+};
+$("walletBtn").onclick  = loadWallet;
+$("loadBtn").onclick    = loadIds;
 $("demoBtn").onclick    = addDemoPieces;
 $("remixBtn").onclick   = () => remix(false);
-$("reshuffleBtn").onclick = () => remix(true);
+$("surpriseBtn").onclick= surprise;
 $("pngBtn").onclick     = savePng;
-$("bannerBtn").onclick  = saveBanner;
-$("recBtn").onclick     = recordWebM;
+$("mp4Btn").onclick     = recordVideo;
+$("gifBtn").onclick     = saveGif;
 $("shareBtn").onclick   = shareX;
-$("edges").onchange     = () => { if (composed && anim.mode === "off") draw(performance.now()); };
-$("sig").onchange       = () => { if (composed && anim.mode === "off") draw(performance.now()); };
+$("edges").onchange     = () => { if (composed && animOff()) draw(performance.now()); };
+$("sig").onchange       = () => { if (composed && animOff()) draw(performance.now()); };
 $("gRows").onchange     = gridResize;
 $("gCols").onchange     = gridResize;
-$("gRandom").onclick    = () => { grid.cells = []; if (mode === "studio" && composed) remix(false); };
+$("gRandom").onclick    = () => { grid.cells = []; if ((mode === "studio" || mode === "wall") && composed) remix(false); };
 $("gClear").onclick     = () => {
   grid.cells.forEach(c => c.inv = false);
   frags.forEach(f => { if (f.cellRef) f.filter = null; });
-  if (composed && anim.mode === "off") draw(performance.now());
+  if (composed && animOff()) draw(performance.now());
 };
 $("invTool").onclick    = () => { grid.invBrush = !grid.invBrush; renderDonorChips(); };
-$("tokens").addEventListener("keydown", e => { if (e.key === "Enter") loadPieces(); });
+$("wallet").addEventListener("keydown", e => { if (e.key === "Enter") loadWallet(); });
+$("tokens").addEventListener("keydown", e => { if (e.key === "Enter") loadIds(); });
 
 // blank easel wash
-ctx.fillStyle = "#EDE7D8";
-ctx.fillRect(0, 0, S, S);
+sctx.fillStyle = "#EDE7D8";
+sctx.fillRect(0, 0, S, S);
 syncButtons();
 </script>
 </body>
