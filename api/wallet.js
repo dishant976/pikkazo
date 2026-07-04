@@ -10,11 +10,14 @@
 // → { tokens: [{ id: "348", image: "https://nft-cdn.alchemy.com/..." }, ...] }
 
 export default async function handler(req, res) {
-  const { owner, contract } = req.query;
+  const { owner, contract, health } = req.query;
   const key = process.env.ALCHEMY_API_KEY;
 
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
+
+  // Open /api/wallet?health=1 in a browser to check the setup
+  if (health) return res.status(200).json({ ok: true, keySet: !!key });
 
   if (!key) return res.status(500).json({ error: "ALCHEMY_API_KEY not set" });
   if (!/^0x[0-9a-fA-F]{40}$/.test(owner || ""))    return res.status(400).json({ error: "bad owner address" });
