@@ -36,7 +36,7 @@ body{
 ::selection{background:var(--ochre);color:var(--ink)}
 
 /* ---------- header ---------- */
-header{position:relative;padding:38px 32px 24px;border-bottom:3px solid var(--ink);overflow:hidden}
+header{position:relative;padding:38px 32px 0;border-bottom:3px solid var(--ink);overflow:hidden}
 .frag-title{display:flex;flex-wrap:wrap;gap:5px;align-items:flex-end;user-select:none}
 .frag-title span{
   font-family:'Archivo Black',sans-serif;
@@ -59,6 +59,13 @@ header .shard{position:absolute;pointer-events:none}
 header .shard.s1{top:-30px;right:8%;width:120px;height:160px;background:var(--ochre);clip-path:polygon(0 0,100% 12%,74% 100%)}
 header .shard.s2{top:20px;right:2%;width:90px;height:120px;background:var(--prussian);clip-path:polygon(20% 0,100% 30%,55% 100%,0 70%)}
 header .shard.s3{bottom:-20px;right:14%;width:70px;height:90px;background:var(--oxide);clip-path:polygon(0 20%,100% 0,80% 100%)}
+.tabs{display:flex;gap:8px;margin-top:16px;position:relative;z-index:2}
+.tabs .tab{
+  font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;
+  color:var(--ink);background:var(--paper-edge);cursor:pointer;
+  border:2px solid var(--ink);border-bottom:none;padding:9px 16px 11px;
+}
+.tabs .tab[aria-pressed=true]{background:var(--ink);color:var(--bone);box-shadow:3px 0 0 var(--ochre)}
 
 /* ---------- layout ---------- */
 main{display:grid;grid-template-columns:330px 1fr;max-width:1320px;margin:0 auto}
@@ -122,11 +129,12 @@ details.adv[open] summary{margin-bottom:10px}
   background:var(--ink);color:var(--bone);padding:2px 3px;text-align:center;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.piece:hover::after{
-  content:"✕";position:absolute;inset:0;
+.piece[aria-pressed=true]{outline:3px solid var(--oxide);outline-offset:1px}
+.piece .px{
+  position:absolute;top:0;right:0;width:18px;height:18px;
   display:flex;align-items:center;justify-content:center;
-  background:rgba(168,64,42,.85);color:var(--bone);
-  font-size:16px;font-weight:600;
+  background:rgba(168,64,42,.92);color:var(--bone);
+  font-size:11px;font-weight:700;cursor:pointer;
 }
 .pieces-empty{
   font-size:12px;opacity:.55;line-height:1.6;
@@ -168,6 +176,13 @@ details.adv[open] summary{margin-bottom:10px}
 #editRack .row:first-child{margin-top:0}
 #editRack .row input[type=range]{width:80px}
 #eSelRow[data-empty="1"]{opacity:.4;pointer-events:none}
+#mToolRack{background:var(--linen);border:2px solid var(--ink);padding:12px 14px;box-shadow:4px 4px 0 rgba(33,30,26,.15)}
+#mToolRack .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+#mToolRack .row:first-child{margin-top:0}
+#mToolRack .row input[type=range]{width:90px}
+.swatch{width:26px;height:26px;border:2px solid var(--ink);cursor:pointer;padding:0}
+.swatch[aria-pressed=true]{outline:3px solid var(--oxide);outline-offset:1px}
+input[type=color]{width:34px;height:30px;border:2px solid var(--ink);background:var(--paper-edge);padding:1px;cursor:pointer}
 .donor-chip{
   width:34px;height:34px;border:2px solid var(--ink);cursor:pointer;padding:0;
   overflow:hidden;position:relative;background:var(--paper-edge);
@@ -227,6 +242,10 @@ footer{
     <span>C</span><span>H</span><span>O</span><span>P</span><span class="gap"></span><span>S</span><span>H</span><span>O</span><span>P</span><span class="gap"></span><span>S</span><span>T</span><span>U</span><span>D</span><span>I</span><span>O</span>
   </h1>
   <p class="tagline">Paste wallet → chop pikkazos → cook clips. <b>MP4 · GIF · PNG.</b> Straight from Ethereum, no keys, no backend.</p>
+  <nav class="tabs">
+    <button class="tab" data-view="studio" aria-pressed="true">🔪 CHOP SHOP</button>
+    <button class="tab" data-view="mosaic" aria-pressed="false">🧩 MOSAIC LAB</button>
+  </nav>
 </header>
 
 <main>
@@ -268,8 +287,8 @@ footer{
     </div>
   </section>
 
-  <!-- ================= easel ================= -->
-  <section class="easel" aria-label="Easel">
+  <!-- ================= easel: STUDIO view ================= -->
+  <section class="easel" id="studioView" aria-label="Chop Shop easel">
 
     <div class="rack">
       <div class="panel-label">Cuts</div>
@@ -399,6 +418,65 @@ footer{
       <button class="btn" id="shareBtn" disabled>Share on X</button>
     </div>
   </section>
+
+  <!-- ================= easel: MOSAIC LAB view ================= -->
+  <section class="easel" id="mosaicView" aria-label="Mosaic Lab" hidden>
+    <div class="rack">
+      <div class="panel-label">Tools</div>
+      <div class="chips" role="group" aria-label="Tool">
+        <button class="chip mtchip" data-tool="draw"   aria-pressed="true">✏️ DRAW</button>
+        <button class="chip mtchip" data-tool="mosaic" aria-pressed="false">🟨 MOSAIC BRUSH</button>
+        <button class="chip mtchip" data-tool="stamp"  aria-pressed="false">🖼️ STICKER</button>
+        <button class="chip mtchip" data-tool="erase"  aria-pressed="false">🧽 ERASE</button>
+        <button class="chip mtchip" data-tool="puzzle" aria-pressed="false">🧩 PUZZLE</button>
+      </div>
+    </div>
+    <div class="rack">
+      <div id="mToolRack">
+        <div class="row" id="mDrawRow">
+          <span class="mini">size <input type="range" id="mBrushSize" min="3" max="80" value="14"></span>
+          <span class="mini">ink <input type="range" id="mBrushAlpha" min="10" max="100" value="100"></span>
+          <span class="mini" id="mColorRow"><input type="color" id="mColorPick" value="#211E1A" title="Custom color"></span>
+          <label class="mini" style="gap:5px"><input type="checkbox" id="mUnderlay" style="accent-color:var(--oxide)"> draw under stickers</label>
+        </div>
+        <div class="row" id="mMosaicRow" hidden>
+          <span class="mini">tile <input type="range" id="mTessSize" min="12" max="80" value="34"></span>
+          <span class="mini">grout <input type="range" id="mTessGap" min="0" max="40" value="12"></span>
+          <span class="mini">source: tap a piece on the left</span>
+        </div>
+        <div class="row" id="mStampRow" hidden>
+          <span class="mini">size <input type="range" id="mStampSize" min="10" max="80" value="30"></span>
+          <span class="mini">tilt <input type="range" id="mStampRot" min="-45" max="45" value="0"></span>
+          <span class="mini">tap to place · drag to move · double-tap to delete</span>
+        </div>
+        <div class="row" id="mPuzzleRow" hidden>
+          <span class="mini">pieces <input type="range" id="mPzN" min="3" max="6" value="4"></span>
+          <button class="btn secondary small" id="mPzStart">🧩 Scramble</button>
+          <button class="btn secondary small" id="mPzQuit">Done</button>
+          <span class="mini" id="mPzInfo"></span>
+        </div>
+        <div class="tool-note" id="mToolNote"></div>
+      </div>
+    </div>
+    <div class="rack">
+      <div class="panel-label">Backdrop</div>
+      <div class="chips" role="group" aria-label="Backdrop" id="mGradChips"></div>
+    </div>
+    <div class="canvas-frame">
+      <canvas id="mStage" width="1200" height="1200" aria-label="Mosaic play canvas" style="cursor:crosshair"></canvas>
+      <div class="canvas-hint" id="mHint">
+        <strong>A blank wall, a bag of tesserae.</strong>
+        <span>Load pieces on the left, pick a tool, make a mess.</span>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn secondary" id="mUndo">↩ Undo</button>
+      <button class="btn secondary" id="mClear">🗑 Clear</button>
+      <span style="flex:1"></span>
+      <button class="btn secondary" id="mPng">PNG</button>
+      <button class="btn" id="mShare">Share on X</button>
+    </div>
+  </section>
 </main>
 
 <footer>
@@ -457,6 +535,7 @@ const CHAOS_POOL = ["none","invert(1)","grayscale(1) contrast(1.3)","hue-rotate(
 
 /* backdrop gradients — [angle-ish start/end handled below] */
 const GRADS = {
+  paper:  { name:"PAPER",  stops:["#F7F3E8","#EDE7D8"] },
   pikka:  { name:"PIKKA",  stops:["#C9972F","#A8402A","#2C4A5E"] },
   gold:   { name:"GOLD",   stops:["#F5D989","#C9972F","#7A5313"] },
   vapor:  { name:"VAPOR",  stops:["#FF9EC4","#B487F5","#5EE0E6"] },
@@ -787,6 +866,7 @@ function pieceThumb(p, size){
   }
   return p.img.cloneNode();
 }
+let activePiece = 0;
 function renderPieces(){
   const box = $("pieces");
   box.innerHTML = "";
@@ -794,14 +874,23 @@ function renderPieces(){
   pieces.forEach((p, i) => {
     const d = document.createElement("button");
     d.className = "piece";
-    d.title = "Remove " + p.id;
-    d.setAttribute("aria-label", "Remove piece " + p.id);
+    d.setAttribute("aria-pressed", String(i === activePiece));
+    d.title = (p.demo ? p.id : "#" + p.id) + " — tap to make active";
     d.appendChild(pieceThumb(p, 160));
     const t = document.createElement("span");
     t.className = "tid";
     t.textContent = p.demo ? p.id : "#" + p.id;
     d.appendChild(t);
-    d.onclick = () => { pieces.splice(i, 1); renderPieces(); onPiecesChanged(); };
+    const x = document.createElement("span");
+    x.className = "px"; x.textContent = "✕"; x.title = "Remove";
+    x.onclick = (ev) => {
+      ev.stopPropagation();
+      pieces.splice(i, 1);
+      if (activePiece >= pieces.length) activePiece = 0;
+      renderPieces(); onPiecesChanged(); mPaint();
+    };
+    d.appendChild(x);
+    d.onclick = () => { activePiece = i; renderPieces(); mPaint(); };
     box.appendChild(d);
   });
   renderDonorChips();
@@ -1828,12 +1917,300 @@ $("invTool").onclick    = () => { grid.invBrush = !grid.invBrush; renderDonorChi
 $("wallet").addEventListener("keydown", e => { if (e.key === "Enter") loadWallet(); });
 $("tokens").addEventListener("keydown", e => { if (e.key === "Enter") loadIds(); });
 
+/* ============================================================
+   MOSAIC LAB — in-page tab. Shares pieces[], wallet plumbing,
+   and GRADS with the studio. Own canvas, own object model.
+   ============================================================ */
+let view = "studio";
+const mStage = $("mStage");
+const mctx = mStage.getContext("2d");
+let mTool = "draw", mGradKey = "paper", mBrushColor = "#211E1A";
+let mItems = [], mStrokeNow = null, mDragSticker = null, mDragOff = [0,0], mLastTap = 0, mLastTess = [0,0];
+const mPuzzle = { on:false, n:4, tiles:[], img:null, drag:null, done:false, t0:0 };
+const M_SWATCHES = ["#211E1A","#F7F3E8","#C9972F","#A8402A","#2C4A5E","#7A8B6F","#B487F5"];
+
+function showView(v){
+  view = v;
+  $("studioView").hidden = v !== "studio";
+  $("mosaicView").hidden = v !== "mosaic";
+  document.querySelectorAll(".tabs .tab").forEach(t => t.setAttribute("aria-pressed", String(t.dataset.view === v)));
+  if (v === "mosaic") mPaint();
+}
+document.querySelectorAll(".tabs .tab").forEach(t => t.onclick = () => showView(t.dataset.view));
+
+function mStageToArt(e){
+  const r = mStage.getBoundingClientRect();
+  return [(e.clientX - r.left) * (S / r.width), (e.clientY - r.top) * (S / r.height)];
+}
+function mBackdrop(){
+  const gdef = GRADS[mGradKey];
+  const g = mctx.createLinearGradient(0, 0, S, S);
+  gdef.stops.forEach((c, i) => g.addColorStop(i / (gdef.stops.length - 1), c));
+  mctx.fillStyle = g; mctx.fillRect(0, 0, S, S);
+}
+function mRenderStroke(it){
+  mctx.save();
+  mctx.globalCompositeOperation = it.erase ? "destination-out" : "source-over";
+  mctx.globalAlpha = it.erase ? 1 : it.alpha;
+  mctx.strokeStyle = it.color; mctx.lineWidth = it.size;
+  mctx.lineCap = "round"; mctx.lineJoin = "round";
+  const p = it.pts;
+  mctx.beginPath();
+  if (p.length === 1){
+    mctx.fillStyle = it.color;
+    mctx.arc(p[0][0], p[0][1], it.size/2, 0, 7); mctx.fill();
+  } else {
+    mctx.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length - 1; i++){
+      const mx = (p[i][0] + p[i+1][0]) / 2, my = (p[i][1] + p[i+1][1]) / 2;
+      mctx.quadraticCurveTo(p[i][0], p[i][1], mx, my);
+    }
+    mctx.stroke();
+  }
+  mctx.restore();
+}
+function mRenderTess(it){
+  if (!pieces.length) return;
+  for (const t of it.tiles){
+    const img = pieces[t.src % pieces.length].img;
+    const w = img.width || 800, hh = img.height || 800;
+    mctx.save();
+    mctx.translate(t.x, t.y);
+    mctx.rotate(t.r);
+    mctx.drawImage(img, t.x/S*w - t.s/2/S*w, t.y/S*hh - t.s/2/S*hh, t.s/S*w, t.s/S*hh, -t.s/2, -t.s/2, t.s, t.s);
+    mctx.strokeStyle = "rgba(33,30,26,.35)"; mctx.lineWidth = 1.5;
+    mctx.strokeRect(-t.s/2, -t.s/2, t.s, t.s);
+    mctx.restore();
+  }
+}
+function mRenderSticker(it){
+  if (!pieces.length) return;
+  const img = pieces[it.src % pieces.length].img;
+  mctx.save();
+  mctx.translate(it.x, it.y);
+  mctx.rotate(it.rot);
+  mctx.shadowColor = "rgba(20,17,12,.4)"; mctx.shadowBlur = 18; mctx.shadowOffsetX = 8; mctx.shadowOffsetY = 10;
+  mctx.drawImage(img, -it.size/2, -it.size/2, it.size, it.size);
+  mctx.shadowColor = "transparent";
+  mctx.strokeStyle = "#F7F3E8"; mctx.lineWidth = 7;
+  mctx.strokeRect(-it.size/2, -it.size/2, it.size, it.size);
+  mctx.strokeStyle = "rgba(33,30,26,.6)"; mctx.lineWidth = 2;
+  mctx.strokeRect(-it.size/2, -it.size/2, it.size, it.size);
+  mctx.restore();
+}
+function mRenderPuzzle(){
+  if (!mPuzzle.on || !mPuzzle.img) return;
+  const img = mPuzzle.img, n = mPuzzle.n;
+  const area = 900, ox = (S - area)/2, oy = (S - area)/2, cs = area/n;
+  mctx.save();
+  mctx.strokeStyle = "rgba(33,30,26,.4)"; mctx.setLineDash([10,8]); mctx.lineWidth = 3;
+  mctx.strokeRect(ox, oy, area, area);
+  for (let i = 1; i < n; i++){
+    mctx.beginPath(); mctx.moveTo(ox + i*cs, oy); mctx.lineTo(ox + i*cs, oy + area); mctx.stroke();
+    mctx.beginPath(); mctx.moveTo(ox, oy + i*cs); mctx.lineTo(ox + area, oy + i*cs); mctx.stroke();
+  }
+  mctx.setLineDash([]);
+  const w = img.width || 800, hh = img.height || 800;
+  const sorted = [...mPuzzle.tiles].sort((a,b) => (a === mPuzzle.drag) - (b === mPuzzle.drag));
+  for (const t of sorted){
+    mctx.save();
+    mctx.translate(t.x, t.y);
+    if (!t.snapped){ mctx.shadowColor = "rgba(20,17,12,.45)"; mctx.shadowBlur = 14; mctx.shadowOffsetX = 6; mctx.shadowOffsetY = 8; }
+    mctx.drawImage(img, t.i*w/n, t.j*hh/n, w/n, hh/n, -cs/2, -cs/2, cs, cs);
+    mctx.shadowColor = "transparent";
+    mctx.strokeStyle = t.snapped ? "rgba(122,139,111,.9)" : "#F7F3E8";
+    mctx.lineWidth = t.snapped ? 3 : 5;
+    mctx.strokeRect(-cs/2, -cs/2, cs, cs);
+    mctx.restore();
+  }
+  mctx.restore();
+}
+function mPaint(){
+  if (view !== "mosaic") return;
+  mctx.clearRect(0, 0, S, S);
+  mBackdrop();
+  for (const it of mItems) if (it.type === "stroke" && it.under) mRenderStroke(it);
+  for (const it of mItems){
+    if (it.type === "stroke" && it.under) continue;
+    if (it.type === "stroke") mRenderStroke(it);
+    else if (it.type === "tess") mRenderTess(it);
+    else if (it.type === "sticker") mRenderSticker(it);
+  }
+  mRenderPuzzle();
+  mctx.fillStyle = "#211E1A"; mctx.fillRect(0, S-40, S, 40);
+  mctx.fillStyle = GRADS[mGradKey].stops[0]; mctx.fillRect(0, S-40, 8, 40);
+  mctx.fillStyle = "#EDE7D8"; mctx.font = "600 19px 'IBM Plex Mono', monospace";
+  mctx.textBaseline = "middle"; mctx.textAlign = "left";
+  mctx.fillText("MOSAIC LAB · PIKKAZO · " + (idList() || "—"), 22, S-19);
+  $("mHint").classList.toggle("hidden", mItems.length > 0 || mPuzzle.on || pieces.length > 0);
+}
+/* pointer */
+mStage.addEventListener("pointerdown", e => {
+  const [x, y] = mStageToArt(e);
+  mStage.setPointerCapture(e.pointerId);
+  if (mPuzzle.on){
+    for (let i = mPuzzle.tiles.length - 1; i >= 0; i--){
+      const t = mPuzzle.tiles[i];
+      if (t.snapped) continue;
+      const cs = 900 / mPuzzle.n;
+      if (Math.abs(x - t.x) < cs/2 && Math.abs(y - t.y) < cs/2){
+        mPuzzle.drag = t; mDragOff = [x - t.x, y - t.y]; break;
+      }
+    }
+    mPaint(); return;
+  }
+  if (mTool === "draw" || mTool === "erase"){
+    mStrokeNow = { type:"stroke", pts:[[x,y]], color:mBrushColor, size:+$("mBrushSize").value,
+      alpha:$("mBrushAlpha").value/100, erase:mTool === "erase", under:$("mUnderlay").checked && mTool === "draw" };
+    mItems.push(mStrokeNow); mPaint();
+  } else if (mTool === "mosaic"){
+    if (!pieces.length) return setStatus("Load a pikkazo first — the mosaic brush paints with its pixels.", true);
+    mStrokeNow = { type:"tess", tiles:[] };
+    mItems.push(mStrokeNow);
+    mLastTess = [-999,-999];
+    mTessAt(x, y);
+  } else if (mTool === "stamp"){
+    if (!pieces.length) return setStatus("Load a pikkazo first.", true);
+    for (let i = mItems.length - 1; i >= 0; i--){
+      const it = mItems[i];
+      if (it.type !== "sticker") continue;
+      if (Math.hypot(x - it.x, y - it.y) < it.size/2){
+        const now = Date.now();
+        if (now - mLastTap < 400 && mDragSticker === it){ mItems.splice(i,1); mDragSticker = null; mPaint(); return; }
+        mLastTap = now; mDragSticker = it; mDragOff = [x - it.x, y - it.y];
+        mPaint(); return;
+      }
+    }
+    const size = $("mStampSize").value / 100 * 900 + 80;
+    mItems.push({ type:"sticker", src:activePiece, x, y, size, rot:$("mStampRot").value * Math.PI/180 });
+    mDragSticker = mItems[mItems.length-1]; mLastTap = Date.now();
+    mPaint();
+  }
+});
+mStage.addEventListener("pointermove", e => {
+  const [x, y] = mStageToArt(e);
+  if (mPuzzle.on && mPuzzle.drag){ mPuzzle.drag.x = x - mDragOff[0]; mPuzzle.drag.y = y - mDragOff[1]; mPaint(); return; }
+  if (mStrokeNow && mStrokeNow.type === "stroke"){ mStrokeNow.pts.push([x,y]); mPaint(); }
+  else if (mStrokeNow && mStrokeNow.type === "tess"){ mTessAt(x, y); }
+  else if (mTool === "stamp" && mDragSticker && e.buttons){ mDragSticker.x = x - mDragOff[0]; mDragSticker.y = y - mDragOff[1]; mPaint(); }
+});
+mStage.addEventListener("pointerup", () => {
+  if (mPuzzle.on && mPuzzle.drag){ mTrySnap(mPuzzle.drag); mPuzzle.drag = null; mPaint(); return; }
+  mStrokeNow = null;
+});
+function mTessAt(x, y){
+  const size = +$("mTessSize").value, gap = +$("mTessGap").value;
+  const step = size + gap;
+  if (Math.hypot(x - mLastTess[0], y - mLastTess[1]) < step * .9) return;
+  mLastTess = [x, y];
+  const gx = Math.round(x / step) * step, gy = Math.round(y / step) * step;
+  if (mStrokeNow.tiles.some(t => t.gx === gx && t.gy === gy)) return;
+  mStrokeNow.tiles.push({ x:gx, y:gy, gx, gy, s:size, r:(Math.random()-.5)*.08, src:activePiece });
+  mPaint();
+}
+function mStartPuzzle(){
+  if (!pieces.length) return setStatus("Load a pikkazo to puzzle it 🧩", true);
+  mPuzzle.on = true; mPuzzle.done = false;
+  mPuzzle.n = +$("mPzN").value;
+  mPuzzle.img = pieces[activePiece].img;
+  mPuzzle.t0 = Date.now();
+  const n = mPuzzle.n, area = 900, ox = (S-area)/2, oy = (S-area)/2, cs = area/n;
+  mPuzzle.tiles = [];
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++){
+    mPuzzle.tiles.push({ i, j, snapped:false, hx:ox + i*cs + cs/2, hy:oy + j*cs + cs/2,
+      x:80 + Math.random()*(S-160), y:80 + Math.random()*(S-200) });
+  }
+  $("mPzInfo").textContent = "0/" + n*n;
+  setStatus("Rebuild the face 🧩 drag tiles onto the board.");
+  mPaint();
+}
+function mTrySnap(t){
+  if (Math.hypot(t.x - t.hx, t.y - t.hy) < 55){
+    t.x = t.hx; t.y = t.hy; t.snapped = true;
+    const done = mPuzzle.tiles.filter(k => k.snapped).length;
+    $("mPzInfo").textContent = done + "/" + mPuzzle.tiles.length;
+    if (done === mPuzzle.tiles.length && !mPuzzle.done){
+      mPuzzle.done = true;
+      const secs = Math.round((Date.now() - mPuzzle.t0)/1000);
+      setStatus(`SOLVED in ${secs}s 🎉 screenshot it, post it, challenge the group chat.`);
+    }
+  }
+}
+function mQuitPuzzle(){ mPuzzle.on = false; mPuzzle.tiles = []; mPaint(); }
+/* mosaic wiring */
+const M_NOTES = {
+  draw:"Freehand ink. Pick a color, drag on the canvas — check \"draw under\" to paint behind your pikkazos.",
+  mosaic:"Paints tesserae — little tiles cut live from the active pikkazo (tap one in the tray), grout-snapped so they tessellate.",
+  stamp:"Tap to place the active pikkazo as a polaroid sticker. Drag to move. Double-tap a sticker to peel it off.",
+  erase:"Rubs out ink and mosaic (stickers are safe — double-tap those to remove).",
+  puzzle:"Scrambles the active pikkazo into a jigsaw. Drag tiles onto the dashed board — they snap when close."
+};
+function mSyncUI(){
+  ["mDrawRow","mMosaicRow","mStampRow","mPuzzleRow"].forEach(id => $(id).hidden = true);
+  if (mTool === "draw" || mTool === "erase") $("mDrawRow").hidden = false;
+  if (mTool === "mosaic") $("mMosaicRow").hidden = false;
+  if (mTool === "stamp") $("mStampRow").hidden = false;
+  if (mTool === "puzzle") $("mPuzzleRow").hidden = false;
+  $("mToolNote").textContent = M_NOTES[mTool];
+}
+document.querySelectorAll(".mtchip").forEach(chip => {
+  chip.onclick = () => {
+    document.querySelectorAll(".mtchip").forEach(c => c.setAttribute("aria-pressed","false"));
+    chip.setAttribute("aria-pressed","true");
+    mTool = chip.dataset.tool;
+    if (mTool !== "puzzle" && mPuzzle.on) mQuitPuzzle();
+    mSyncUI(); mPaint();
+  };
+});
+(function mBuildSwatches(){
+  const row = $("mColorRow"), anchor = $("mColorPick");
+  M_SWATCHES.forEach(c => {
+    const b = document.createElement("button");
+    b.className = "swatch"; b.style.background = c;
+    b.title = c; b.setAttribute("aria-pressed", String(c === mBrushColor));
+    b.onclick = () => { mBrushColor = c; row.querySelectorAll(".swatch").forEach(s => s.setAttribute("aria-pressed", String(s === b))); };
+    row.insertBefore(b, anchor);
+  });
+  anchor.oninput = () => { mBrushColor = anchor.value; row.querySelectorAll(".swatch").forEach(s => s.setAttribute("aria-pressed","false")); };
+})();
+(function mBuildGradChips(){
+  const wrap = $("mGradChips");
+  Object.entries(GRADS).forEach(([key, g]) => {
+    const b = document.createElement("button");
+    b.className = "chip gchip"; b.title = g.name;
+    b.setAttribute("aria-pressed", String(key === mGradKey));
+    const sw = document.createElement("span");
+    sw.className = "sw"; sw.style.background = "linear-gradient(120deg," + g.stops.join(",") + ")";
+    b.appendChild(sw);
+    b.onclick = () => { mGradKey = key; wrap.querySelectorAll(".gchip").forEach(c => c.setAttribute("aria-pressed", String(c === b))); mPaint(); };
+    wrap.appendChild(b);
+  });
+})();
+$("mUndo").onclick = () => { mItems.pop(); mPaint(); };
+$("mClear").onclick = () => { mItems = []; mQuitPuzzle(); mPaint(); setStatus("Fresh wall."); };
+$("mPzStart").onclick = mStartPuzzle;
+$("mPzQuit").onclick = mQuitPuzzle;
+$("mPng").onclick = () => {
+  const a = document.createElement("a");
+  a.download = "pikkazo-mosaic.png"; a.href = mStage.toDataURL("image/png"); a.click();
+};
+$("mShare").onclick = () => {
+  const text = "Made this in the MOSAIC LAB 🧩🎨 pikkazo doodles, tesserae & puzzles" + (SITE_URL ? "\n\n" + SITE_URL : "");
+  window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(text), "_blank");
+  setStatus("Attach your PNG to the post ✨");
+};
+window.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "z" && view === "mosaic"){ e.preventDefault(); mItems.pop(); mPaint(); }
+});
+mSyncUI();
+
 // blank easel wash
 syncSelUI();
 renderEditorDonors();
 sctx.fillStyle = "#EDE7D8";
 sctx.fillRect(0, 0, S, S);
 syncButtons();
+mPaint();
 </script>
 </body>
 </html>
