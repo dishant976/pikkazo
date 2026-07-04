@@ -368,13 +368,15 @@ footer{
    CONFIG — set the contract once and the field disappears
    for everyone. Set SITE_URL for share text.
    ============================================================ */
-const DEFAULT_CONTRACT = "0x6478b94dfa32F3eab600970D04B34615eE97484e";            // e.g. "0x...."
-const SITE_URL         = "https://pikkazo.vercel.app/";            // your vercel URL
+const DEFAULT_CONTRACT = "0x6478b94dfa32F3eab600970D04B34615eE97484e";  // ⚠️ VERIFY this on OpenSea (see chat)
+const SITE_URL         = "https://pikkazo.vercel.app";
 const RPCS = [
-  "https://eth.llamarpc.com",
-  "https://ethereum-rpc.publicnode.com",
+  "/api/rpc",                          // same-origin Alchemy proxy — no CORS, ever (needs deploy)
+  "https://eth.drpc.org",
+  "https://1rpc.io/eth",
+  "https://eth.meowrpc.com",
   "https://rpc.ankr.com/eth",
-  "https://cloudflare-eth.com"
+  "https://rpc.mevblocker.io"
 ];
 const IPFS_GATEWAYS = [
   "https://ipfs.io/ipfs/",
@@ -647,8 +649,20 @@ async function loadWallet(){
   setStatus("Knocking on the chain… 🔍");
   try{
     let tokens = await apiWalletIds(contract, wallet);           // fast lane
-    if (!tokens) tokens = (await walletTokenIds(contract, wallet)).map(id => ({ id }));  // scenic route
-    if (!tokens.length){ setStatus("No pikkazos in this wallet. Floor's cheap — fix that, then come back 😉", true); }
+    if (!tokens){
+      setStatus("Fast lane offline — taking the scenic route (deploy api/ + ALCHEMY_API_KEY for the quick one)");
+      tokens = (await walletTokenIds(contract, wallet)).map(id => ({ id }));
+    }
+    if (!tokens.length){
+      // don't cry "empty wallet" if the contract itself is the problem
+      const code = await rpc("eth_getCode", [contract, "latest"]).catch(() => null);
+      if (code === "0x")
+        setStatus("That contract address has NO code on Ethereum mainnet — it's the wrong address. OpenSea → any Pikkazo → Details → Contract Address (must say Ethereum, not another chain).", true);
+      else if (code === null)
+        setStatus("Couldn't reach Ethereum at all — deploy api/rpc.js + ALCHEMY_API_KEY, or try again in a minute.", true);
+      else
+        setStatus("Contract is real, but this wallet holds none of its tokens. Floor's cheap — fix that, then come back 😉", true);
+    }
     else {
       const got = await plateTokens(contract, tokens);
       setStatus(got ? `${got} pikkazo${got>1?"s":""} on the table. Chop's on the house 🔪` : "Found tokens but their images wouldn't load.", !got);
