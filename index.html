@@ -162,6 +162,12 @@ details.adv[open] summary{margin-bottom:10px}
 #gridRack.on{display:block}
 #gridRack .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
 #gridRack .row:first-child{margin-top:0}
+#editRack{display:none;background:var(--linen);border:2px solid var(--ink);padding:12px 14px;box-shadow:4px 4px 0 rgba(33,30,26,.15)}
+#editRack.on{display:block}
+#editRack .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+#editRack .row:first-child{margin-top:0}
+#editRack .row input[type=range]{width:80px}
+#eSelRow[data-empty="1"]{opacity:.4;pointer-events:none}
 .donor-chip{
   width:34px;height:34px;border:2px solid var(--ink);cursor:pointer;padding:0;
   overflow:hidden;position:relative;background:var(--paper-edge);
@@ -269,6 +275,7 @@ footer{
       <div class="panel-label">Cuts</div>
       <div class="chips" role="group" aria-label="Cut style">
         <button class="chip mchip" data-mode="studio"  aria-pressed="true">GRID STUDIO</button>
+        <button class="chip mchip" data-mode="freecut" aria-pressed="false">FREE CUT</button>
         <button class="chip mchip" data-mode="wall"    aria-pressed="false">3D WALL</button>
         <button class="chip mchip" data-mode="shatter" aria-pressed="false">SHATTER</button>
         <button class="chip mchip" data-mode="strips"  aria-pressed="false">STRIPS</button>
@@ -296,6 +303,42 @@ footer{
           <button class="chip" id="invTool" aria-pressed="false" title="Flip cells to their negative">INVERT CELL</button>
         </div>
         <div class="tool-note">Pick a donor brush, then click or drag across the canvas to paint cells. Gaps let the backdrop glow through.</div>
+      </div>
+    </div>
+
+    <div class="rack">
+      <div id="editRack" aria-label="Free cut editor controls">
+        <div class="row">
+          <span class="mini">source:</span><span id="eDonorRow" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+          <span class="mini">shards <input type="range" id="eShards" min="3" max="24" value="10" aria-label="Shard count"></span>
+          <button class="btn secondary small" id="eRecut">🔪 Re-cut</button>
+          <button class="btn secondary small" id="eExplode">💥 Scatter</button>
+          <button class="btn secondary small" id="eGather">🧲 Gather</button>
+        </div>
+        <div class="row" id="eShapeRow">
+          <span class="mini">add:</span>
+          <button class="btn secondary small" id="eAddShard">＋ Shard</button>
+          <button class="btn secondary small" data-shape="tri">▲</button>
+          <button class="btn secondary small" data-shape="dot">●</button>
+          <button class="btn secondary small" data-shape="bar">▮</button>
+        </div>
+        <div class="row" id="eSelRow">
+          <span class="mini">selected:</span>
+          <span class="mini">rotate <input type="range" id="eRot" min="-180" max="180" value="0"></span>
+          <span class="mini">size <input type="range" id="eScale" min="40" max="220" value="100"></span>
+          <button class="btn secondary small" id="eMirror">⇋ Mirror</button>
+          <button class="btn secondary small" id="eFront">▲ Front</button>
+          <button class="btn secondary small" id="eBack">▼ Back</button>
+          <button class="btn secondary small" id="eDup">⧉ Duplicate</button>
+          <button class="btn secondary small" id="eDel">✕ Delete</button>
+        </div>
+        <div class="row">
+          <span class="mini">shadow — dist <input type="range" id="shDist" min="0" max="60" value="16"></span>
+          <span class="mini">angle <input type="range" id="shAng" min="0" max="360" value="130"></span>
+          <span class="mini">blur <input type="range" id="shBlur" min="0" max="60" value="22"></span>
+          <span class="mini">depth <input type="range" id="shAlpha" min="0" max="100" value="45"></span>
+        </div>
+        <div class="tool-note">Drag shards to compose. Tap a shard to select it, then sculpt with the sliders. Shadows lift the whole collage off the backdrop.</div>
       </div>
     </div>
 
@@ -762,13 +805,19 @@ function renderPieces(){
     box.appendChild(d);
   });
   renderDonorChips();
+  renderEditorDonors();
 }
 function onPiecesChanged(){
   grid.cells.forEach(c => { if (c.donor >= pieces.length) c.donor = 0; });
   frags.forEach(f => { if (f.donor >= pieces.length) f.donor = 0; });
   if (grid.brush >= pieces.length) grid.brush = 0;
   invertedCache.clear();
+  frags.forEach(f => {
+    if (f.kind === "free" && !f.isShape && f.srcDonor >= pieces.length){ f.srcDonor = 0; if (pieces.length) shardBmp(f); }
+  });
+  if (editor.brush >= pieces.length) editor.brush = 0;
   renderDonorChips();
+  renderEditorDonors();
   syncButtons();
   if (composed && pieces.length >= 2){
     if (mode === "wall") remix(false);                 // rebuild tile textures
@@ -921,7 +970,243 @@ function ensureGrid(rng){
     grid.cells = Array.from({length:need}, () => ({ donor:(r()*Math.max(pieces.length,1))|0, inv:false }));
   }
 }
-const BUILDERS = { shatter:buildShatter, strips:buildStrips, split:buildSplit, diamond:buildDiamond, weave:buildWeave, studio:buildStudio, wall:wallOrFallback };
+const BUILDERS = { shatter:buildShatter, strips:buildStrips, split:buildSplit, diamond:buildDiamond, weave:buildWeave, studio:buildStudio, wall:wallOrFallback, freecut:buildFreecut };
+
+/* ============================================================
+   FREE CUT — per-piece geometric editor.
+   The chosen pikkazo explodes into shards; each shard is a
+   draggable, rotatable, scalable, mirrorable, shadow-lit object.
+   ============================================================ */
+const editor = {
+  brush:0, sel:null, dragging:false, dragOff:[0,0],
+  shadow:{ dist:16, ang:130, blur:22, alpha:.45 }
+};
+const SHAPE_FILLS = ["#C9972F","#A8402A","#2C4A5E","#7A8B6F","#211E1A"];
+
+function shardBmp(f){
+  // cache the clipped cut once; per-frame we just stamp the bitmap
+  const [bx, by, bw, bh] = polyBounds(f.poly);
+  f.bx = bx; f.by = by;
+  const c = document.createElement("canvas");
+  c.width = Math.max(2, Math.ceil(bw)); c.height = Math.max(2, Math.ceil(bh));
+  const g = c.getContext("2d");
+  g.translate(-bx, -by);
+  clipPoly(g, f.poly); g.clip();
+  if (f.isShape){
+    g.fillStyle = f.fill; g.fill();
+  } else {
+    const img = pieces[f.srcDonor % pieces.length].img;
+    g.drawImage(img, 0, 0, img.width || 800, img.height || 800, 0, 0, S, S);
+  }
+  // cut edge
+  g.lineWidth = 5; g.strokeStyle = "rgba(247,243,232,.9)"; g.stroke();
+  g.lineWidth = 1.5; g.strokeStyle = "rgba(33,30,26,.55)"; g.stroke();
+  f.bmp = c;
+}
+function polyCentroid(p){
+  let x = 0, y = 0;
+  p.forEach(([px, py]) => { x += px; y += py; });
+  return [x / p.length, y / p.length];
+}
+function makeFreeFrag(rng, poly, srcDonor, isShape, fill){
+  const [cx, cy] = polyCentroid(poly);
+  const f = newFrag(rng, {
+    kind:"free", poly, cx, cy, dx:0, dy:0, rot:0, sc:1, mir:1,
+    srcDonor, isShape:!!isShape, fill: fill || null
+  });
+  shardBmp(f);
+  return f;
+}
+function buildFreecut(rng){
+  editor.sel = null;
+  if (document.getElementById("eSelRow")) syncSelUI();
+  const count = parseInt($("eShards").value) || 10;
+  const donor = Math.min(editor.brush, Math.max(pieces.length - 1, 0));
+  return bspShards(rng, count).map(poly => makeFreeFrag(rng, poly, donor));
+}
+function scatterShards(gather){
+  const rng = mulberry32((Math.random()*0xffffffff)>>>0);
+  frags.forEach(f => {
+    if (f.kind !== "free") return;
+    if (gather){ f.dx = 0; f.dy = 0; f.rot = 0; }
+    else {
+      f.dx = (rng() - .5) * 360;
+      f.dy = (rng() - .5) * 360;
+      f.rot = (rng() - .5) * .9;
+    }
+  });
+  if (animOff()) draw(performance.now());
+}
+function renderFree(f, t, selected){
+  const sp = anim.speed;
+  let wx = 0, wy = 0, wr = 0, ws = 1;
+  if (anim.modes.has("drift")){ wx = Math.sin(t/900*sp + f.phase) * 14; wy = Math.cos(t/1100*sp + f.phase) * 14; wr = Math.sin(t/1500*sp + f.phase) * .05; }
+  if (anim.modes.has("pulse")) ws = 1 + Math.sin(t/700*sp + f.phase) * .05;
+  ctx.save();
+  ctx.translate(f.cx + f.dx + wx, f.cy + f.dy + wy);
+  ctx.rotate(f.rot + wr);
+  ctx.scale(f.sc * ws * f.mir, f.sc * ws);
+  ctx.filter = fragFilter(f);
+  const sh = editor.shadow;
+  if (sh.alpha > 0){
+    const a = sh.ang * Math.PI / 180;
+    ctx.shadowColor = "rgba(20,17,12," + sh.alpha + ")";
+    ctx.shadowBlur = sh.blur;
+    ctx.shadowOffsetX = Math.cos(a) * sh.dist;
+    ctx.shadowOffsetY = Math.sin(a) * sh.dist;
+  }
+  ctx.drawImage(f.bmp, f.bx - f.cx, f.by - f.cy);
+  ctx.restore();
+  if (selected){
+    ctx.save();
+    ctx.translate(f.cx + f.dx + wx, f.cy + f.dy + wy);
+    ctx.rotate(f.rot + wr);
+    ctx.scale(f.sc * ws * f.mir, f.sc * ws);
+    ctx.beginPath();
+    f.poly.forEach(([x, y], i) => i ? ctx.lineTo(x - f.cx, y - f.cy) : ctx.moveTo(x - f.cx, y - f.cy));
+    ctx.closePath();
+    ctx.setLineDash([12, 8]);
+    ctx.lineWidth = 4; ctx.strokeStyle = "#A8402A"; ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+}
+function stageToArt(e){
+  const r = stage.getBoundingClientRect();
+  const m = matPx(), scale = S / (S - 2*m);
+  return [
+    ((e.clientX - r.left) * (S / r.width)  - m) * scale,
+    ((e.clientY - r.top)  * (S / r.height) - m) * scale
+  ];
+}
+function inPolyPt(x, y, poly){
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++){
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function pickShard(ax, ay){
+  for (let i = frags.length - 1; i >= 0; i--){
+    const f = frags[i];
+    if (f.kind !== "free") continue;
+    // inverse transform into shard-local space
+    let px = ax - (f.cx + f.dx), py = ay - (f.cy + f.dy);
+    const c = Math.cos(-f.rot), s = Math.sin(-f.rot);
+    let lx = px * c - py * s, ly = px * s + py * c;
+    lx /= f.sc * f.mir; ly /= f.sc;
+    if (inPolyPt(lx + f.cx, ly + f.cy, f.poly)) return f;
+  }
+  return null;
+}
+function syncSelUI(){
+  const f = editor.sel;
+  $("eSelRow").dataset.empty = f ? "0" : "1";
+  if (f){
+    $("eRot").value = Math.round(f.rot * 180 / Math.PI);
+    $("eScale").value = Math.round(f.sc * 100);
+  }
+}
+function renderEditorDonors(){
+  const row = $("eDonorRow");
+  if (!row) return;
+  row.innerHTML = "";
+  pieces.forEach((p, i) => {
+    const b = document.createElement("button");
+    b.className = "donor-chip";
+    b.title = "Cut from " + (p.demo ? p.id : "#" + p.id);
+    b.setAttribute("aria-label", b.title);
+    b.setAttribute("aria-pressed", String(editor.brush === i));
+    b.appendChild(pieceThumb(p, 68));
+    b.onclick = () => { editor.brush = i; renderEditorDonors(); };
+    row.appendChild(b);
+  });
+}
+/* editor pointer interaction */
+stage.addEventListener("pointerdown", e => {
+  if (mode !== "freecut" || !composed) return;
+  const [ax, ay] = stageToArt(e);
+  const f = pickShard(ax, ay);
+  editor.sel = f;
+  syncSelUI();
+  if (f){
+    editor.dragging = true;
+    editor.dragOff = [ax - (f.cx + f.dx), ay - (f.cy + f.dy)];
+    stage.setPointerCapture(e.pointerId);
+  }
+  if (animOff()) draw(performance.now());
+});
+stage.addEventListener("pointermove", e => {
+  if (mode !== "freecut" || !editor.dragging || !editor.sel) return;
+  const [ax, ay] = stageToArt(e);
+  editor.sel.dx = ax - editor.dragOff[0] - editor.sel.cx;
+  editor.sel.dy = ay - editor.dragOff[1] - editor.sel.cy;
+  if (animOff()) draw(performance.now());
+});
+stage.addEventListener("pointerup", () => { editor.dragging = false; });
+/* editor controls */
+function redrawIfStill(){ if (composed && animOff()) draw(performance.now()); }
+$("eShards").onchange = () => { if (mode === "freecut" && composed) remix(false); };
+$("eRecut").onclick   = () => { if (mode === "freecut") remix(true); };
+$("eExplode").onclick = () => scatterShards(false);
+$("eGather").onclick  = () => scatterShards(true);
+$("eAddShard").onclick = () => {
+  if (mode !== "freecut" || !composed || !pieces.length) return;
+  const rng = mulberry32((Math.random()*0xffffffff)>>>0);
+  const shards = bspShards(rng, 6 + (rng()*6|0));
+  const poly = shards[(rng()*shards.length)|0];
+  const f = makeFreeFrag(rng, poly, editor.brush);
+  f.dx = (rng() - .5) * 200; f.dy = (rng() - .5) * 200;
+  frags.push(f);
+  editor.sel = f; syncSelUI(); redrawIfStill();
+};
+document.querySelectorAll("#eShapeRow [data-shape]").forEach(btn => {
+  btn.onclick = () => {
+    if (mode !== "freecut" || !composed) return;
+    const rng = mulberry32((Math.random()*0xffffffff)>>>0);
+    const kind = btn.dataset.shape;
+    const cx = S/2 + (rng()-.5)*300, cy = S/2 + (rng()-.5)*300, r = 90 + rng()*120;
+    let poly;
+    if (kind === "tri") poly = [[cx, cy-r],[cx+r*.9, cy+r*.7],[cx-r*.9, cy+r*.7]];
+    else if (kind === "bar") poly = [[cx-r*1.4, cy-r*.28],[cx+r*1.4, cy-r*.28],[cx+r*1.4, cy+r*.28],[cx-r*1.4, cy+r*.28]];
+    else { poly = []; for (let i = 0; i < 24; i++){ const a = i/24*Math.PI*2; poly.push([cx + Math.cos(a)*r, cy + Math.sin(a)*r]); } }
+    const f = makeFreeFrag(rng, poly, 0, true, SHAPE_FILLS[(rng()*SHAPE_FILLS.length)|0]);
+    f.rot = (rng()-.5)*.6;
+    frags.push(f);
+    editor.sel = f; syncSelUI(); redrawIfStill();
+  };
+});
+$("eRot").oninput   = () => { if (editor.sel){ editor.sel.rot = $("eRot").value * Math.PI / 180; redrawIfStill(); } };
+$("eScale").oninput = () => { if (editor.sel){ editor.sel.sc = $("eScale").value / 100; redrawIfStill(); } };
+$("eMirror").onclick= () => { if (editor.sel){ editor.sel.mir *= -1; redrawIfStill(); } };
+$("eFront").onclick = () => {
+  const f = editor.sel; if (!f) return;
+  frags.splice(frags.indexOf(f), 1); frags.push(f); redrawIfStill();
+};
+$("eBack").onclick  = () => {
+  const f = editor.sel; if (!f) return;
+  frags.splice(frags.indexOf(f), 1); frags.unshift(f); redrawIfStill();
+};
+$("eDup").onclick   = () => {
+  const f = editor.sel; if (!f) return;
+  const g = Object.assign({}, f, { dx: f.dx + 40, dy: f.dy + 40 });
+  frags.push(g); editor.sel = g; syncSelUI(); redrawIfStill();
+};
+$("eDel").onclick   = () => {
+  const f = editor.sel; if (!f) return;
+  frags.splice(frags.indexOf(f), 1);
+  editor.sel = null; syncSelUI(); redrawIfStill();
+};
+["shDist","shAng","shBlur","shAlpha"].forEach(id => {
+  $(id).oninput = () => {
+    editor.shadow.dist  = +$("shDist").value;
+    editor.shadow.ang   = +$("shAng").value;
+    editor.shadow.blur  = +$("shBlur").value;
+    editor.shadow.alpha = $("shAlpha").value / 100;
+    redrawIfStill();
+  };
+});
 function wallOrFallback(rng){
   if (typeof THREE === "undefined"){
     setStatus("3D engine didn't load — check the connection. Serving a flat grid instead.", true);
@@ -1110,6 +1395,7 @@ function fragFilter(f){
   return FILTERS[filterMode] || "none";
 }
 function renderFrag(f, t, edges){
+  if (f.kind === "free"){ renderFree(f, t, f === editor.sel); return; }
   const img = pieces[f.donor % pieces.length].img;
   const { jx, jy, js } = animOffsets(f, t);
   const isRect = f.kind === "rect";
@@ -1184,6 +1470,15 @@ function remix(newSeed){
 }
 function shuffleStep(){
   if (mode === "wall"){ wallShuffleStep(); return; }
+  if (mode === "freecut"){
+    const cands = frags.filter(f => f.kind === "free" && !f.isShape);
+    for (let k = 0; k < 1 + (Math.random()*2|0) && cands.length; k++){
+      const f = cands[(Math.random()*cands.length)|0];
+      f.srcDonor = (f.srcDonor + 1 + (Math.random()*(Math.max(pieces.length,2)-1)|0)) % pieces.length;
+      shardBmp(f);
+    }
+    return;
+  }
   for (let k = 0; k < 1 + (Math.random()*3|0); k++){
     const f = frags[(Math.random()*frags.length)|0];
     if (!f) continue;
@@ -1280,7 +1575,8 @@ function gridResize(){
 const MEDIUM = {
   shatter:"Shattered pikkazos", strips:"Sliced pikkazos", split:"Split pikkazos",
   diamond:"Diamond-cut pikkazos", weave:"Woven pikkazos", studio:"Hand-set pikkazo mosaic",
-  wall:"Pikkazo wall relief, three dimensions"
+  wall:"Pikkazo wall relief, three dimensions",
+  freecut:"Hand-cut pikkazo assemblage"
 };
 function updatePlacard(){
   $("placard").hidden = false;
@@ -1401,6 +1697,7 @@ function surprise(){
   gradKey = gkeys[(Math.random()*gkeys.length)|0];
   document.querySelectorAll(".gchip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.grad === gradKey)));
   grid.cells = [];
+  editor.sel = null; syncSelUI();
   syncButtons();
   remix(true);
   setStatus("Chef's choice 👨‍🍳 " + mode.toUpperCase() + " + " + filterMode.toUpperCase() + " + " + GRADS[gradKey].name);
@@ -1434,7 +1731,8 @@ function syncButtons(){
   $("surpriseBtn").disabled = !ready || busy;
   ["pngBtn","mp4Btn","gifBtn","shareBtn"].forEach(id => $(id).disabled = !composed || busy);
   $("gridRack").classList.toggle("on", mode === "studio" || mode === "wall");
-  stage.classList.toggle("paint", (mode === "studio" || mode === "wall") && composed);
+  $("editRack").classList.toggle("on", mode === "freecut");
+  stage.classList.toggle("paint", (mode === "studio" || mode === "wall" || mode === "freecut") && composed);
 }
 
 /* gradient chips */
@@ -1531,6 +1829,8 @@ $("wallet").addEventListener("keydown", e => { if (e.key === "Enter") loadWallet
 $("tokens").addEventListener("keydown", e => { if (e.key === "Enter") loadIds(); });
 
 // blank easel wash
+syncSelUI();
+renderEditorDonors();
 sctx.fillStyle = "#EDE7D8";
 sctx.fillRect(0, 0, S, S);
 syncButtons();
